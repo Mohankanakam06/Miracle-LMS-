@@ -422,3 +422,40 @@
 ::-webkit-scrollbar-thumb {
   @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50 transition-colors;
 }
+
+/* Mobile-specific utilities */
+@layer utilities {
+  @media (max-width: 640px) {
+    .mobile-stack {
+      flex-direction: column !important;
+    }
+
+    .mobile-full {
+      width: 100% !important;
+    }
+
+    .mobile-p-4 {
+      padding: 1rem !important;
+    }
+
+    .mobile-text-sm {
+      font-size: 0.875rem !important;
+    }
+  }
+
+  /* Touch-friendly buttons */
+  @media (hover: none) {
+    button:not(.no-touch-target), 
+    a:not(.no-touch-target) {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  /* Improved mobile scrolling */
+  @media (max-width: 768px) {
+    * {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+}

@@ -454,6 +454,37 @@ export function useUploadMaterial() {
   });
 }
 
+export function useCreateClass() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ courseId, teacherId, section, academicYear, room }: {
+      courseId: string;
+      teacherId: string;
+      section: string;
+      academicYear: string;
+      room?: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('classes')
+        .insert({
+          course_id: courseId,
+          teacher_id: teacherId,
+          section,
+          academic_year: academicYear,
+          room,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+    },
+  });
+}
+
 export function useCreateAssignment() {
   const queryClient = useQueryClient();
 

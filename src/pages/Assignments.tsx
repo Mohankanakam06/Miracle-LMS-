@@ -2,14 +2,15 @@ import { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAssignments, useSubmissions, useClasses, useSubmitAssignment } from '@/hooks/useLMS';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import CreateAssignmentDialog from '@/components/assignments/CreateAssignmentDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { 
-  ClipboardList, Clock, Upload, CheckCircle, AlertCircle, 
+import {
+  ClipboardList, Clock, Upload, CheckCircle, AlertCircle,
   FileText, Calendar, Plus, Search, Filter, Eye, Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,28 +20,29 @@ import { format, isPast } from 'date-fns';
 export default function Assignments() {
   const { user, userRole } = useAuth();
   const isTeacher = userRole === 'teacher' || userRole === 'admin';
-  
+
   const { data: assignments, isLoading: loadingAssignments } = useAssignments();
   const { data: submissions, isLoading: loadingSubmissions } = useSubmissions(user?.id);
   const { data: classes } = useClasses();
   const submitAssignment = useSubmitAssignment();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Map submissions to assignments for student view
   const assignmentsWithStatus = useMemo(() => {
     if (!assignments) return [];
-    
+
     return assignments.map(assignment => {
       const submission = submissions?.find(s => s.assignment_id === assignment.id);
       let status: 'pending' | 'submitted' | 'graded' | 'overdue' = 'pending';
-      
+
       if (submission) {
         status = submission.marks !== null ? 'graded' : 'submitted';
       } else if (isPast(new Date(assignment.due_date))) {
         status = 'overdue';
       }
-      
+
       return {
         ...assignment,
         status,
@@ -50,7 +52,7 @@ export default function Assignments() {
     });
   }, [assignments, submissions]);
 
-  const filteredAssignments = assignmentsWithStatus.filter(a => 
+  const filteredAssignments = assignmentsWithStatus.filter(a =>
     a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     a.subject.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -71,7 +73,7 @@ export default function Assignments() {
 
   const handleSubmit = async (assignmentId: string) => {
     if (!user?.id) return;
-    
+
     try {
       await submitAssignment.mutateAsync({
         assignmentId,
@@ -112,11 +114,12 @@ export default function Assignments() {
               <h1 className="text-2xl font-display font-bold">Assignments</h1>
               <p className="text-muted-foreground">Create and manage assignments for your classes</p>
             </div>
-            <Button variant="hero">
+            <Button variant="hero" onClick={() => setCreateDialogOpen(true)}>
               <Plus className="h-4 w-4" />
               Create Assignment
             </Button>
           </div>
+
 
           {/* Stats */}
           <div className="grid gap-4 md:grid-cols-3">
@@ -169,9 +172,9 @@ export default function Assignments() {
                 <div className="flex items-center gap-2">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="Search assignments..." 
-                      className="pl-9 w-64" 
+                    <Input
+                      placeholder="Search assignments..."
+                      className="pl-9 w-64"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -182,7 +185,7 @@ export default function Assignments() {
             <CardContent>
               {assignments && assignments.length > 0 ? (
                 <div className="space-y-4">
-                  {assignments.filter(a => 
+                  {assignments.filter(a =>
                     a.title.toLowerCase().includes(searchQuery.toLowerCase())
                   ).map((assignment) => (
                     <div key={assignment.id} className="p-4 rounded-lg border hover:shadow-md transition-shadow">
@@ -216,6 +219,8 @@ export default function Assignments() {
               )}
             </CardContent>
           </Card>
+
+          <CreateAssignmentDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
         </div>
       </DashboardLayout>
     );

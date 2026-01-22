@@ -1,16 +1,17 @@
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useAttendance, useMarkAttendance, useProfiles } from '@/hooks/useLMS';
+import { useAttendance, useMarkAttendance, useProfiles, useClasses } from '@/hooks/useLMS';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import CreatePeriodDialog from '@/components/classes/CreatePeriodDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  CheckSquare, Calendar, TrendingUp, AlertCircle, 
-  Check, X, Clock, Users, Save, Loader2
+import {
+  CheckSquare, Calendar, TrendingUp, AlertCircle,
+  Check, X, Clock, Users, Save, Loader2, Plus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -37,19 +38,22 @@ const SEMESTERS = [
 export default function Attendance() {
   const { user, userRole } = useAuth();
   const isTeacher = userRole === 'teacher' || userRole === 'admin';
-  
+
   const { data: attendanceRecords, isLoading } = useAttendance(user?.id);
   const { data: profiles } = useProfiles();
+  const { data: classes } = useClasses();
   const markAttendance = useMarkAttendance();
 
+  const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [selectedSemester, setSelectedSemester] = useState<string>('');
   const [attendanceState, setAttendanceState] = useState<Record<string, boolean>>({});
+  const [createPeriodOpen, setCreatePeriodOpen] = useState(false);
 
   // Filter students by department and semester
   const filteredStudents = useMemo(() => {
     if (!profiles) return [];
-    
+
     return profiles.filter(profile => {
       if (profile.role !== 'student') return false;
       if (selectedDepartment && profile.department !== selectedDepartment) return false;
@@ -70,7 +74,7 @@ export default function Attendance() {
     const thisMonth = new Date().getMonth();
     const thisMonthRecords = attendanceRecords.filter(r => new Date(r.date).getMonth() === thisMonth);
     const thisMonthPresent = thisMonthRecords.filter(r => r.status === 'present').length;
-    const thisMonthPercentage = thisMonthRecords.length > 0 
+    const thisMonthPercentage = thisMonthRecords.length > 0
       ? Math.round((thisMonthPresent / thisMonthRecords.length) * 100) : 0;
 
     // Group by subject
@@ -115,7 +119,15 @@ export default function Attendance() {
   };
 
   const handleSaveAttendance = async () => {
-    if (!user?.id || filteredStudents.length === 0) return;
+    if (!user?.id || filteredStudents.length === 0) {
+      toast.error('Please select students to mark attendance');
+      return;
+    }
+
+    if (!selectedClass) {
+      toast.error('Please select a class/period');
+      return;
+    }
 
     const records = filteredStudents.map(student => ({
       studentId: student.id,
@@ -123,10 +135,8 @@ export default function Attendance() {
     }));
 
     try {
-      // For now, we'll need a class context - using a placeholder
-      // In a real implementation, you'd associate attendance with department/semester
       await markAttendance.mutateAsync({
-        classId: 'department-attendance', // Placeholder - needs proper handling
+        classId: selectedClass,
         date: new Date().toISOString().split('T')[0],
         records,
         markedBy: user.id
@@ -134,6 +144,7 @@ export default function Attendance() {
       toast.success('Attendance saved successfully');
       setAttendanceState({});
     } catch (error) {
+      console.error('Error saving attendance:', error);
       toast.error('Failed to save attendance');
     }
   };
@@ -167,7 +178,7 @@ export default function Attendance() {
   }
 
   if (isTeacher) {
-    const showStudentList = selectedDepartment && selectedSemester;
+    const showStudentList = selectedClass && selectedDepartment && selectedSemester;
     const presentCount = Object.values(attendanceState).filter(Boolean).length;
     const absentCount = filteredStudents.length - presentCount;
 
@@ -175,15 +186,34 @@ export default function Attendance() {
       <DashboardLayout>
         <div className="space-y-6">
           {/* Header */}
-          <div>
-            <h1 className="text-2xl font-display font-bold">Take Attendance</h1>
-            <p className="text-muted-foreground">Mark attendance by department and semester</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-display font-bold">Take Attendance</h1>
+              <p className="text-muted-foreground">Mark attendance by class and section</p>
+            </div>
+            <Button variant="outline" onClick={() => setCreatePeriodOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Create Period
+            </Button>
           </div>
 
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Select value={selectedClass} onValueChange={setSelectedClass}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select Class/Period" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {classes?.map((cls) => (
+                  <SelectItem key={cls.id} value={cls.id}>
+                    {cls.courses?.name} - {cls.section}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-              <SelectTrigger className="w-full sm:w-48">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select Department" />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
@@ -196,7 +226,7 @@ export default function Attendance() {
             </Select>
 
             <Select value={selectedSemester} onValueChange={setSelectedSemester}>
-              <SelectTrigger className="w-full sm:w-48">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select Semester" />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
@@ -247,11 +277,11 @@ export default function Attendance() {
                 {filteredStudents.length > 0 ? (
                   <div className="space-y-2">
                     {/* Select All */}
-                    <div 
+                    <div
                       className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
                       onClick={toggleSelectAll}
                     >
-                      <Checkbox 
+                      <Checkbox
                         checked={filteredStudents.length > 0 && filteredStudents.every(s => attendanceState[s.id])}
                       />
                       <span className="font-medium">Select All</span>
@@ -259,12 +289,12 @@ export default function Attendance() {
 
                     {/* Student List */}
                     {filteredStudents.map((student, index) => (
-                      <div 
+                      <div
                         key={student.id}
                         className={cn(
                           "flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-colors",
-                          attendanceState[student.id] 
-                            ? "bg-success/10 border border-success/30" 
+                          attendanceState[student.id]
+                            ? "bg-success/10 border border-success/30"
                             : "bg-muted/30 hover:bg-muted/50"
                         )}
                         onClick={() => toggleAttendance(student.id)}
@@ -291,6 +321,8 @@ export default function Attendance() {
               </CardContent>
             </Card>
           )}
+
+          <CreatePeriodDialog open={createPeriodOpen} onOpenChange={setCreatePeriodOpen} />
         </div>
       </DashboardLayout>
     );
@@ -382,8 +414,8 @@ export default function Attendance() {
                       <div className="text-right">
                         <span className={cn(
                           "font-semibold",
-                          subject.percentage >= 90 ? "text-success" : 
-                          subject.percentage >= 75 ? "text-warning" : "text-destructive"
+                          subject.percentage >= 90 ? "text-success" :
+                            subject.percentage >= 75 ? "text-warning" : "text-destructive"
                         )}>
                           {subject.percentage}%
                         </span>
@@ -392,13 +424,13 @@ export default function Attendance() {
                         </span>
                       </div>
                     </div>
-                    <Progress 
-                      value={subject.percentage} 
+                    <Progress
+                      value={subject.percentage}
                       className={cn(
                         "h-2",
-                        subject.percentage >= 90 ? "[&>div]:bg-success" : 
-                        subject.percentage >= 75 ? "[&>div]:bg-warning" : "[&>div]:bg-destructive"
-                      )} 
+                        subject.percentage >= 90 ? "[&>div]:bg-success" :
+                          subject.percentage >= 75 ? "[&>div]:bg-warning" : "[&>div]:bg-destructive"
+                      )}
                     />
                   </div>
                 ))}
