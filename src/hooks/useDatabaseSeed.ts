@@ -2,52 +2,218 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
-// JNTU-GV R23 CSE Syllabus Data
+// JNTU-GV Comprehensive Syllabus Data (R20, R21, R22, R23)
 const JNTUGV_DATA = [
-  // I Year - Semester I
+  // ========================================
+  // R23 REGULATION - CSE
+  // ========================================
+  // I Year - Semester I (Common for all branches)
   { code: 'R231101', name: 'Linear Algebra and Calculus', semester: 1, credits: 3, department: 'Basic Science', description: 'Matrix algebra, eigen values/vectors, calculus of multivariable functions' },
   { code: 'R231102', name: 'Engineering Physics', semester: 1, credits: 3, department: 'Basic Science', description: 'Optics, Lasers, Quantum Mechanics, Semiconductors' },
   { code: 'R231103', name: 'Communicative English', semester: 1, credits: 2, department: 'Humanities', description: 'Listening, Speaking, Reading, Writing skills' },
   { code: 'R231104', name: 'Basic Civil & Mechanical Engineering', semester: 1, credits: 3, department: 'Engineering Science', description: 'Basic concepts of Civil and Mechanical Engineering' },
   { code: 'R231105', name: 'Introduction to Programming', semester: 1, credits: 3, department: 'CSE', description: 'Problem solving using C, Arrays, Pointers, Structures' },
+  { code: 'R231106', name: 'Engineering Workshop', semester: 1, credits: 2, department: 'Engineering Science', description: 'Hands-on training in various engineering trades' },
 
-  // I Year - Semester II
+  // I Year - Semester II (Common for all branches)
   { code: 'R231201', name: 'Differential Equations & Vector Calculus', semester: 2, credits: 3, department: 'Basic Science', description: 'ODEs, PDEs, Vector Differentiation and Integration' },
   { code: 'R231202', name: 'Engineering Chemistry', semester: 2, credits: 3, department: 'Basic Science', description: 'Structure, Bonding, Electrochemistry, Polymers' },
   { code: 'R231203', name: 'Engineering Graphics', semester: 2, credits: 3, department: 'Engineering Science', description: 'CAD, Projections, Isometric Views' },
   { code: 'R231204', name: 'Basic Electrical & Electronics Engineering', semester: 2, credits: 3, department: 'Engineering Science', description: 'Circuits, Machines, Semiconductor Devices' },
   { code: 'R231205', name: 'Data Structures', semester: 2, credits: 3, department: 'CSE', description: 'Linked Lists, Stacks, Queues, Trees, Graphs, Hashing' },
+  { code: 'R231206', name: 'Environmental Science', semester: 2, credits: 2, department: 'Basic Science', description: 'Ecosystems, Pollution, Sustainability' },
 
-  // II Year - Semester I
+  // II Year - Semester I - CSE
   { code: 'R232101', name: 'Mathematical Foundations of Computer Science', semester: 3, credits: 3, department: 'CSE', description: 'Logic, Sets, Relations, Functions, Graph Theory' },
   { code: 'R232102', name: 'Universal Human Values', semester: 3, credits: 2, department: 'Humanities', description: 'Understanding Harmony, Ethical Conduct' },
   { code: 'R232103', name: 'Digital Logic & Computer Organization', semester: 3, credits: 3, department: 'CSE', description: 'Digital Circuits, CPU Organization, Memory' },
   { code: 'R232104', name: 'Software Engineering', semester: 3, credits: 3, department: 'CSE', description: 'SDLC, Agile, Testing, Maintenance' },
   { code: 'R232105', name: 'Object Oriented Programming through Java', semester: 3, credits: 3, department: 'CSE', description: 'Classes, Objects, Inheritance, Polymorphism, Exception Handling' },
 
-  // II Year - Semester II
+  // II Year - Semester II - CSE
   { code: 'R232201', name: 'Probability and Statistics', semester: 4, credits: 3, department: 'Basic Science', description: 'Probability distributions, Sampling, Hypothesis Testing' },
   { code: 'R232202', name: 'Operating Systems', semester: 4, credits: 3, department: 'CSE', description: 'Process Management, Memory Management, File Systems' },
   { code: 'R232203', name: 'Database Management Systems', semester: 4, credits: 3, department: 'CSE', description: 'ER Models, SQL, Normalization, Transactions' },
   { code: 'R232204', name: 'Formal Languages and Automata Theory', semester: 4, credits: 3, department: 'CSE', description: 'Finite Automata, Grammars, Turing Machines' },
+  { code: 'R232205', name: 'Web Technologies', semester: 4, credits: 3, department: 'CSE', description: 'HTML, CSS, JavaScript, React, Node.js' },
 
-  // III Year - Semester I
+  // III Year - Semester I - CSE
   { code: 'R233101', name: 'Artificial Intelligence & Machine Learning', semester: 5, credits: 3, department: 'CSE', description: 'AI agents, Search algorithms, ML basics, Neural Networks' },
   { code: 'R233102', name: 'Object Oriented Software Engineering', semester: 5, credits: 3, department: 'CSE', description: 'Modeling, Design patterns, Architecture' },
   { code: 'R233103', name: 'Computer Networks', semester: 5, credits: 3, department: 'CSE', description: 'OSI Model, TCP/IP, Routing, Wireless Networks' },
-  { code: 'R233104', name: 'Mobile Computing (PE-I)', semester: 5, credits: 3, department: 'CSE', description: 'Wireless Communication, Mobile Network Layer' },
+  { code: 'R233104', name: 'Mobile Computing', semester: 5, credits: 3, department: 'CSE', description: 'Wireless Communication, Mobile Network Layer' },
+  { code: 'R233105', name: 'Microprocessors and Microcontrollers', semester: 5, credits: 3, department: 'CSE', description: '8086, ARM, Embedded Systems' },
 
-  // III Year - Semester II
+  // III Year - Semester II - CSE
   { code: 'R233201', name: 'Data Warehousing and Data Mining', semester: 6, credits: 3, department: 'CSE', description: 'Data preprocessing, Mining algorithms, Clustering' },
   { code: 'R233202', name: 'Compiler Design', semester: 6, credits: 3, department: 'CSE', description: 'Lexical Analysis, Parsing, Code Generation' },
   { code: 'R233203', name: 'Design and Analysis of Algorithms', semester: 6, credits: 3, department: 'CSE', description: 'Divide and Conquer, Dynamic Programming, Greedy Algorithms' },
-  { code: 'R233204', name: 'DevOps (PE-II)', semester: 6, credits: 3, department: 'CSE', description: 'CI/CD, Containerization, Orchestration' },
+  { code: 'R233204', name: 'DevOps', semester: 6, credits: 3, department: 'CSE', description: 'CI/CD, Containerization, Orchestration' },
+  { code: 'R233205', name: 'Internet of Things', semester: 6, credits: 3, department: 'CSE', description: 'IoT Architecture, Sensors, Cloud Integration' },
 
-  // IV Year - Semester I
+  // IV Year - Semester I - CSE
   { code: 'R234101', name: 'Cryptography and Network Security', semester: 7, credits: 3, department: 'CSE', description: 'Encryption, Authentication, Security Protocols' },
   { code: 'R234102', name: 'Human Resources & Project Management', semester: 7, credits: 3, department: 'Management', description: 'HRM, Project Planning, Risk Management' },
-  { code: 'R234103', name: 'Deep Learning (PE-III)', semester: 7, credits: 3, department: 'CSE', description: 'CNNs, RNNs, GANs, Transfer Learning' },
-  { code: 'R234104', name: 'Cloud Computing (PE-IV)', semester: 7, credits: 3, department: 'CSE', description: 'Cloud models, Virtualization, Cloud Security' },
+  { code: 'R234103', name: 'Deep Learning', semester: 7, credits: 3, department: 'CSE', description: 'CNNs, RNNs, GANs, Transfer Learning' },
+  { code: 'R234104', name: 'Cloud Computing', semester: 7, credits: 3, department: 'CSE', description: 'Cloud models, Virtualization, Cloud Security' },
+
+  // IV Year - Semester II - CSE
+  { code: 'R234201', name: 'Blockchain Technology', semester: 8, credits: 3, department: 'CSE', description: 'Distributed Ledger, Smart Contracts, Cryptocurrency' },
+  { code: 'R234202', name: 'Big Data Analytics', semester: 8, credits: 3, department: 'CSE', description: 'Hadoop, Spark, NoSQL Databases' },
+
+  // ========================================
+  // R23 REGULATION - ECE
+  // ========================================
+  { code: 'R233111', name: 'Signals and Systems', semester: 3, credits: 3, department: 'ECE', description: 'Signal analysis, Fourier Transform, Laplace Transform' },
+  { code: 'R233112', name: 'Electronic Devices and Circuits', semester: 3, credits: 3, department: 'ECE', description: 'Diodes, BJT, FET, Amplifiers' },
+  { code: 'R233113', name: 'Network Analysis', semester: 3, credits: 3, department: 'ECE', description: 'Circuit theorems, Network functions, Two-port networks' },
+  { code: 'R233211', name: 'Analog Communications', semester: 4, credits: 3, department: 'ECE', description: 'AM, FM, PM Modulation techniques' },
+  { code: 'R233212', name: 'Digital Electronics', semester: 4, credits: 3, department: 'ECE', description: 'Logic gates, Flip-flops, Counters, Registers' },
+  { code: 'R233311', name: 'Electromagnetic Fields', semester: 5, credits: 3, department: 'ECE', description: 'Electrostatics, Magnetostatics, Maxwells equations' },
+  { code: 'R233312', name: 'Digital Signal Processing', semester: 5, credits: 3, department: 'ECE', description: 'DFT, FFT, Digital Filters' },
+  { code: 'R233411', name: 'VLSI Design', semester: 6, credits: 3, department: 'ECE', description: 'CMOS technology, Logic design, Layout' },
+  { code: 'R233412', name: 'Microwave Engineering', semester: 6, credits: 3, department: 'ECE', description: 'Waveguides, Antennas, Microwave devices' },
+  { code: 'R234111', name: 'Optical Communications', semester: 7, credits: 3, department: 'ECE', description: 'Optical fibers, Transmitters, Receivers' },
+  { code: 'R234112', name: 'Embedded Systems', semester: 7, credits: 3, department: 'ECE', description: 'Microcontrollers, Real-time OS, IoT' },
+  { code: 'R234211', name: 'Wireless Communications', semester: 8, credits: 3, department: 'ECE', description: 'Mobile communications, 5G, Satellite' },
+  { code: 'R234212', name: 'Radar Systems', semester: 8, credits: 3, department: 'ECE', description: 'Radar principles, Signal processing' },
+
+  // ========================================
+  // R23 REGULATION - EEE
+  // ========================================
+  { code: 'R233121', name: 'Electrical Circuits', semester: 3, credits: 3, department: 'EEE', description: 'DC and AC circuits, Network theorems' },
+  { code: 'R233122', name: 'Electrical Machines - I', semester: 3, credits: 3, department: 'EEE', description: 'DC Machines, Transformers' },
+  { code: 'R233221', name: 'Electrical Machines - II', semester: 4, credits: 3, department: 'EEE', description: 'Induction Motors, Synchronous Machines' },
+  { code: 'R233222', name: 'Power Electronics', semester: 4, credits: 3, department: 'EEE', description: 'Converters, Inverters, Choppers' },
+  { code: 'R233321', name: 'Power Systems - I', semester: 5, credits: 3, department: 'EEE', description: 'Generation, Transmission, Distribution' },
+  { code: 'R233322', name: 'Control Systems', semester: 5, credits: 3, department: 'EEE', description: 'Transfer functions, Stability analysis' },
+  { code: 'R233421', name: 'Power Systems - II', semester: 6, credits: 3, department: 'EEE', description: 'Load flow, Fault analysis, Protection' },
+  { code: 'R233422', name: 'Electrical Measurements', semester: 6, credits: 3, department: 'EEE', description: 'Instruments, Bridges, Transducers' },
+  { code: 'R234121', name: 'High Voltage Engineering', semester: 7, credits: 3, department: 'EEE', description: 'Insulation, Testing, Lightning protection' },
+  { code: 'R234122', name: 'Renewable Energy Systems', semester: 7, credits: 3, department: 'EEE', description: 'Solar, Wind, Hydro power systems' },
+  { code: 'R234221', name: 'Smart Grid Technology', semester: 8, credits: 3, department: 'EEE', description: 'Grid automation, Energy management' },
+  { code: 'R234222', name: 'Electric Vehicles', semester: 8, credits: 3, department: 'EEE', description: 'EV technology, Battery management, Charging' },
+
+  // ========================================
+  // R23 REGULATION - MECH
+  // ========================================
+  { code: 'R233131', name: 'Engineering Mechanics', semester: 3, credits: 3, department: 'MECH', description: 'Statics, Dynamics, Friction' },
+  { code: 'R233132', name: 'Strength of Materials', semester: 3, credits: 3, department: 'MECH', description: 'Stress, Strain, Bending, Torsion' },
+  { code: 'R233231', name: 'Thermodynamics', semester: 4, credits: 3, department: 'MECH', description: 'Laws of thermodynamics, Entropy, Cycles' },
+  { code: 'R233232', name: 'Manufacturing Technology', semester: 4, credits: 3, department: 'MECH', description: 'Casting, Welding, Machining' },
+  { code: 'R233331', name: 'Fluid Mechanics', semester: 5, credits: 3, department: 'MECH', description: 'Fluid statics, Dynamics, Bernoullis equation' },
+  { code: 'R233332', name: 'Machine Design', semester: 5, credits: 3, department: 'MECH', description: 'Design of machine elements, Gears, Bearings' },
+  { code: 'R233431', name: 'Heat Transfer', semester: 6, credits: 3, department: 'MECH', description: 'Conduction, Convection, Radiation' },
+  { code: 'R233432', name: 'Automobile Engineering', semester: 6, credits: 3, department: 'MECH', description: 'IC Engines, Transmission, Chassis' },
+  { code: 'R234131', name: 'Refrigeration and Air Conditioning', semester: 7, credits: 3, department: 'MECH', description: 'Refrigeration cycles, AC systems' },
+  { code: 'R234132', name: 'Mechatronics', semester: 7, credits: 3, department: 'MECH', description: 'Sensors, Actuators, Control systems' },
+  { code: 'R234231', name: 'Robotics', semester: 8, credits: 3, department: 'MECH', description: 'Robot kinematics, Dynamics, Programming' },
+  { code: 'R234232', name: 'Additive Manufacturing', semester: 8, credits: 3, department: 'MECH', description: '3D Printing, Rapid prototyping' },
+
+  // ========================================
+  // R23 REGULATION - CIVIL
+  // ========================================
+  { code: 'R233141', name: 'Surveying', semester: 3, credits: 3, department: 'CIVIL', description: 'Leveling, Theodolite, Total station' },
+  { code: 'R233142', name: 'Building Materials and Construction', semester: 3, credits: 3, department: 'CIVIL', description: 'Cement, Concrete, Masonry' },
+  { code: 'R233241', name: 'Structural Analysis - I', semester: 4, credits: 3, department: 'CIVIL', description: 'Beams, Frames, Trusses' },
+  { code: 'R233242', name: 'Geotechnical Engineering', semester: 4, credits: 3, department: 'CIVIL', description: 'Soil properties, Compaction, Consolidation' },
+  { code: 'R233341', name: 'Structural Analysis - II', semester: 5, credits: 3, department: 'CIVIL', description: 'Slope deflection, Moment distribution' },
+  { code: 'R233342', name: 'Water Resources Engineering', semester: 5, credits: 3, department: 'CIVIL', description: 'Hydrology, Irrigation, Dams' },
+  { code: 'R233441', name: 'Design of Concrete Structures', semester: 6, credits: 3, department: 'CIVIL', description: 'RCC design, Beams, Columns, Slabs' },
+  { code: 'R233442', name: 'Transportation Engineering', semester: 6, credits: 3, department: 'CIVIL', description: 'Highway design, Traffic engineering' },
+  { code: 'R234141', name: 'Environmental Engineering', semester: 7, credits: 3, department: 'CIVIL', description: 'Water treatment, Waste management' },
+  { code: 'R234142', name: 'Construction Management', semester: 7, credits: 3, department: 'CIVIL', description: 'Project planning, Cost estimation' },
+  { code: 'R234241', name: 'Earthquake Engineering', semester: 8, credits: 3, department: 'CIVIL', description: 'Seismic design, Structural dynamics' },
+  { code: 'R234242', name: 'Green Building Technology', semester: 8, credits: 3, department: 'CIVIL', description: 'Sustainable construction, LEED certification' },
+
+  // ========================================
+  // R22 REGULATION - CSE (Selected Core Courses)
+  // ========================================
+  { code: 'R221101', name: 'Mathematics - I', semester: 1, credits: 3, department: 'Basic Science', description: 'Calculus, Differential equations' },
+  { code: 'R221102', name: 'Physics', semester: 1, credits: 3, department: 'Basic Science', description: 'Mechanics, Optics, Thermodynamics' },
+  { code: 'R221103', name: 'English', semester: 1, credits: 2, department: 'Humanities', description: 'Communication skills' },
+  { code: 'R221104', name: 'Programming for Problem Solving', semester: 1, credits: 3, department: 'CSE', description: 'C Programming fundamentals' },
+  { code: 'R222101', name: 'Data Structures', semester: 3, credits: 3, department: 'CSE', description: 'Arrays, Linked Lists, Trees, Graphs' },
+  { code: 'R222102', name: 'Computer Organization', semester: 3, credits: 3, department: 'CSE', description: 'CPU, Memory, I/O organization' },
+  { code: 'R222201', name: 'Operating Systems', semester: 4, credits: 3, department: 'CSE', description: 'Process, Memory, File management' },
+  { code: 'R222202', name: 'DBMS', semester: 4, credits: 3, department: 'CSE', description: 'Database design, SQL, Transactions' },
+  { code: 'R223101', name: 'Computer Networks', semester: 5, credits: 3, department: 'CSE', description: 'Network layers, Protocols' },
+  { code: 'R223102', name: 'Software Engineering', semester: 5, credits: 3, department: 'CSE', description: 'SDLC, Testing, Project management' },
+
+  // ========================================
+  // R22 REGULATION - ECE
+  // ========================================
+  { code: 'R222111', name: 'Electronic Devices', semester: 3, credits: 3, department: 'ECE', description: 'Semiconductors, Diodes, Transistors' },
+  { code: 'R222211', name: 'Analog Circuits', semester: 4, credits: 3, department: 'ECE', description: 'Amplifiers, Oscillators' },
+  { code: 'R223111', name: 'Digital Communications', semester: 5, credits: 3, department: 'ECE', description: 'Digital modulation, Coding' },
+
+  // ========================================
+  // R21 REGULATION - CSE (Selected Core Courses)
+  // ========================================
+  { code: 'R211101', name: 'Mathematics - I', semester: 1, credits: 4, department: 'Basic Science', description: 'Calculus and Linear Algebra' },
+  { code: 'R211102', name: 'Engineering Physics', semester: 1, credits: 3, department: 'Basic Science', description: 'Classical and Modern Physics' },
+  { code: 'R211103', name: 'C Programming', semester: 1, credits: 3, department: 'CSE', description: 'C language fundamentals' },
+  { code: 'R212101', name: 'Data Structures', semester: 3, credits: 3, department: 'CSE', description: 'Linear and Non-linear data structures' },
+  { code: 'R212102', name: 'Digital Logic Design', semester: 3, credits: 3, department: 'CSE', description: 'Combinational and Sequential circuits' },
+  { code: 'R212201', name: 'Operating Systems', semester: 4, credits: 3, department: 'CSE', description: 'OS concepts and implementation' },
+  { code: 'R212202', name: 'Database Systems', semester: 4, credits: 3, department: 'CSE', description: 'Relational databases, SQL' },
+  { code: 'R213101', name: 'Computer Networks', semester: 5, credits: 3, department: 'CSE', description: 'Network architecture, Protocols' },
+  { code: 'R213102', name: 'Web Technologies', semester: 5, credits: 3, department: 'CSE', description: 'HTML, CSS, JavaScript, PHP' },
+
+  // ========================================
+  // R21 REGULATION - ECE
+  // ========================================
+  { code: 'R212111', name: 'Electronic Devices and Circuits', semester: 3, credits: 3, department: 'ECE', description: 'Semiconductor devices, Amplifiers' },
+  { code: 'R212211', name: 'Signals and Systems', semester: 4, credits: 3, department: 'ECE', description: 'Signal analysis, System response' },
+
+  // ========================================
+  // R20 REGULATION - CSE (Selected Core Courses)
+  // ========================================
+  { code: 'R201101', name: 'Engineering Mathematics - I', semester: 1, credits: 4, department: 'Basic Science', description: 'Matrices, Calculus' },
+  { code: 'R201102', name: 'Engineering Physics', semester: 1, credits: 3, department: 'Basic Science', description: 'Wave optics, Quantum mechanics' },
+  { code: 'R201103', name: 'Problem Solving and Programming', semester: 1, credits: 3, department: 'CSE', description: 'C Programming' },
+  { code: 'R201201', name: 'Engineering Mathematics - II', semester: 2, credits: 4, department: 'Basic Science', description: 'Differential equations, Transforms' },
+  { code: 'R201202', name: 'Engineering Chemistry', semester: 2, credits: 3, department: 'Basic Science', description: 'Electrochemistry, Corrosion' },
+  { code: 'R202101', name: 'Data Structures', semester: 3, credits: 3, department: 'CSE', description: 'Stacks, Queues, Trees, Graphs' },
+  { code: 'R202102', name: 'Computer Organization and Architecture', semester: 3, credits: 3, department: 'CSE', description: 'CPU design, Memory hierarchy' },
+  { code: 'R202103', name: 'Object Oriented Programming', semester: 3, credits: 3, department: 'CSE', description: 'Java, C++ OOP concepts' },
+  { code: 'R202201', name: 'Operating Systems', semester: 4, credits: 3, department: 'CSE', description: 'Process scheduling, Memory management' },
+  { code: 'R202202', name: 'Database Management Systems', semester: 4, credits: 3, department: 'CSE', description: 'Relational model, SQL, Normalization' },
+  { code: 'R202203', name: 'Discrete Mathematics', semester: 4, credits: 3, department: 'CSE', description: 'Logic, Sets, Graph theory' },
+  { code: 'R203101', name: 'Computer Networks', semester: 5, credits: 3, department: 'CSE', description: 'OSI model, TCP/IP' },
+  { code: 'R203102', name: 'Software Engineering', semester: 5, credits: 3, department: 'CSE', description: 'Software development lifecycle' },
+  { code: 'R203103', name: 'Design and Analysis of Algorithms', semester: 5, credits: 3, department: 'CSE', description: 'Algorithm design techniques' },
+  { code: 'R203201', name: 'Compiler Design', semester: 6, credits: 3, department: 'CSE', description: 'Lexical analysis, Parsing' },
+  { code: 'R203202', name: 'Machine Learning', semester: 6, credits: 3, department: 'CSE', description: 'Supervised and Unsupervised learning' },
+
+  // ========================================
+  // R20 REGULATION - ECE
+  // ========================================
+  { code: 'R202111', name: 'Electronic Devices', semester: 3, credits: 3, department: 'ECE', description: 'PN junction, BJT, FET' },
+  { code: 'R202112', name: 'Network Theory', semester: 3, credits: 3, department: 'ECE', description: 'Circuit analysis, Network theorems' },
+  { code: 'R202211', name: 'Analog Electronics', semester: 4, credits: 3, department: 'ECE', description: 'Amplifiers, Feedback systems' },
+  { code: 'R203111', name: 'Electromagnetic Theory', semester: 5, credits: 3, department: 'ECE', description: 'Maxwells equations, Wave propagation' },
+
+  // ========================================
+  // R20 REGULATION - EEE
+  // ========================================
+  { code: 'R202121', name: 'Electrical Circuit Analysis', semester: 3, credits: 3, department: 'EEE', description: 'AC/DC circuits, Network analysis' },
+  { code: 'R202122', name: 'Electrical Machines - I', semester: 3, credits: 3, department: 'EEE', description: 'DC generators and motors' },
+  { code: 'R203121', name: 'Power Systems', semester: 5, credits: 3, department: 'EEE', description: 'Generation, Transmission' },
+
+  // ========================================
+  // R20 REGULATION - MECH
+  // ========================================
+  { code: 'R202131', name: 'Engineering Mechanics', semester: 3, credits: 3, department: 'MECH', description: 'Statics and Dynamics' },
+  { code: 'R202132', name: 'Strength of Materials', semester: 3, credits: 3, department: 'MECH', description: 'Stress, Strain analysis' },
+  { code: 'R203131', name: 'Thermodynamics', semester: 5, credits: 3, department: 'MECH', description: 'Heat and work transfer' },
+
+  // ========================================
+  // R20 REGULATION - CIVIL
+  // ========================================
+  { code: 'R202141', name: 'Surveying', semester: 3, credits: 3, department: 'CIVIL', description: 'Land surveying techniques' },
+  { code: 'R202142', name: 'Building Materials', semester: 3, credits: 3, department: 'CIVIL', description: 'Construction materials' },
+  { code: 'R203141', name: 'Structural Analysis', semester: 5, credits: 3, department: 'CIVIL', description: 'Analysis of structures' },
 ];
 
 const sampleCourses = JNTUGV_DATA;

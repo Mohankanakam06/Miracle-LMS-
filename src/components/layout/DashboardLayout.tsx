@@ -1,6 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useLMS';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -82,6 +83,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { data: notifications } = useNotifications(user?.id);
+
+  const unreadCount = notifications?.filter(n => !n.read).length || 0;
 
   const handleSignOut = async () => {
     await signOut();
@@ -219,9 +223,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="relative hover:bg-secondary rounded-full w-10 h-10">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative hover:bg-secondary rounded-full w-10 h-10"
+              onClick={() => navigate('/notifications')}
+            >
               <Bell className="h-5 w-5 text-foreground/70" />
-              <span className="absolute top-2.5 right-2.5 h-2 w-2 bg-destructive rounded-full ring-2 ring-background"></span>
+              {unreadCount > 0 && (
+                <span className="absolute top-2.5 right-2.5 h-2 w-2 bg-destructive rounded-full ring-2 ring-background"></span>
+              )}
             </Button>
           </div>
         </header>

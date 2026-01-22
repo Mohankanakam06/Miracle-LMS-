@@ -161,7 +161,7 @@ Guidelines:
 
     // Step 5: Determine intent and confidence
     let intent = "general";
-    let confidence = 0.8;
+    const confidence = 0.8;
 
     if (lowerMessage.includes("timetable") || lowerMessage.includes("schedule")) intent = "timetable";
     else if (lowerMessage.includes("attendance")) intent = "attendance";

@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, User, Plus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import { JNTUGV_DATA } from './Syllabus';
+import { useMemo } from 'react';
+
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const timeSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
 
@@ -19,14 +22,99 @@ const subjectColors: Record<string, string> = {
   'default': 'bg-secondary text-secondary-foreground shadow-sm border-none',
 };
 
+// Helper to determine semester from "2-2" format
+const getSemesterNumber = (semString: string | undefined): number => {
+  if (!semString) return 4; // Default to 2-2
+  const map: Record<string, number> = {
+    '1-1': 1, '1-2': 2,
+    '2-1': 3, '2-2': 4,
+    '3-1': 5, '3-2': 6,
+    '4-1': 7, '4-2': 8
+  };
+  return map[semString] || 4;
+};
+
+// Helper to determine regulation from Roll Number
+const getRegulation = (roll: string | undefined): string => {
+  if (!roll) return 'R23';
+  if (roll.startsWith('24') || roll.startsWith('23')) return 'R23';
+  if (roll.startsWith('22')) return 'R22';
+  if (roll.startsWith('21')) return 'R21';
+  if (roll.startsWith('20')) return 'R20';
+  return 'R23';
+};
+
 export default function Timetable() {
   const { user, userRole } = useAuth();
   const isTeacher = userRole === 'teacher';
 
-  const { data: timetableData, isLoading } = useTimetable(user?.id);
+  const { data: dbTimetable, isLoading } = useTimetable(user?.id);
 
+  // Dynamic Timetable Generation (Client-Side Fallback)
+  // If DB is empty, we generate a schedule based on Syllabus Data for the User's Branch/Sem.
+  const timetableData = useMemo(() => {
+    // If we have DB data, use it
+    if (dbTimetable && dbTimetable.length > 0) return dbTimetable;
+
+    // Otherwise, generate!
+    if (!user) return [];
+
+    const u = user as any;
+    const currentSem = getSemesterNumber(u.semester); // e.g., 4
+    const currentBranch = u.department || 'CSE';
+    // Use explicitly set regulation if available, otherwise fallback to guessing from roll number
+    const currentReg = u.regulation || getRegulation(u.roll_number);
+
+    // Get relevant courses
+    const myCourses = JNTUGV_DATA.filter((c: any) => {
+      const regMatch = c.code.startsWith(currentReg);
+      const semMatch = c.semester === currentSem;
+      const branchMatch = c.department === currentBranch ||
+        ['Basic Science', 'Humanities', 'Engineering Science', 'Management'].includes(c.department || '');
+      return regMatch && semMatch && branchMatch;
+    });
+
+    if (myCourses.length === 0) return [];
+
+    // Distribute courses into slots (Mock Schedule)
+    // Simple deterministic distribution
+    const entries: any[] = [];
+    let courseIndex = 0;
+
+    days.forEach((day, dIndex) => {
+      timeSlots.forEach((time, tIndex) => {
+        // Skip Lunch (13:00)
+        if (time === '13:00') return;
+        // Skip weekends afternoon
+        if (day === 'Saturday' && tIndex > 3) return;
+
+        // Pick a course
+        // Rotate through courses based on (Day + Time) hash or simple index
+        // We want ~constant slots for same day/time
+        const pickIndex = (dIndex + tIndex + courseIndex) % myCourses.length;
+        const course = myCourses[pickIndex];
+
+        entries.push({
+          id: `mock-${day}-${time}`,
+          day_of_week: day,
+          start_time: time,
+          end_time: timeSlots[tIndex + 1] || '17:00',
+          room: 'Room ' + (100 + currentSem * 10 + dIndex),
+          classes: {
+            courses: { name: course.name },
+            profiles: { full_name: 'Faculty' },
+            room: 'Room ' + (100 + currentSem * 10 + dIndex)
+          }
+        });
+      });
+      courseIndex++; // Shift rotation each day
+    });
+
+    return entries;
+
+  }, [dbTimetable, user]);
   const getScheduleForSlot = (day: string, time: string) => {
-    return timetableData?.find(entry =>
+    return timetableData?.find((entry: any) =>
       entry.day_of_week === day && entry.start_time.startsWith(time)
     );
   };

@@ -11,8 +11,8 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  User, Bell, Shield, Palette, Save, Loader2, 
+import {
+  User, Bell, Shield, Palette, Save, Loader2,
   Mail, Phone, Building, Calendar, Camera, GraduationCap, Hash, UserCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -36,39 +36,48 @@ const SEMESTERS = [
   { value: '4-2', label: '4-2' },
 ];
 
+const REGULATIONS = [
+  { value: 'R23', label: 'R23' },
+  { value: 'R22', label: 'R22' },
+  { value: 'R21', label: 'R21' },
+  { value: 'R20', label: 'R20' },
+];
+
 export default function Settings() {
   const { user, userRole } = useAuth();
   const { data: profiles } = useProfiles();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
-  
+
   // Form state
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [department, setDepartment] = useState('');
   const [semester, setSemester] = useState('');
+  const [regulation, setRegulation] = useState('');
   const [rollNumber, setRollNumber] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Load current user profile
   const currentProfile = profiles?.find(p => p.id === user?.id);
-  
+
   useEffect(() => {
     if (currentProfile) {
       setFullName(currentProfile.full_name || '');
       setPhone(currentProfile.phone || '');
       setDepartment(currentProfile.department || '');
       setSemester(currentProfile.semester || '');
+      setRegulation(currentProfile.regulation || '');
       setRollNumber(currentProfile.roll_number || '');
       setAvatarUrl(currentProfile.avatar_url);
     }
   }, [currentProfile]);
 
-  const userInitials = fullName 
+  const userInitials = fullName
     ? fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
     : user?.email?.substring(0, 2).toUpperCase() || 'U';
 
@@ -127,7 +136,7 @@ export default function Settings() {
 
   const handleSave = async () => {
     if (!user?.id) return;
-    
+
     setSaving(true);
     try {
       const { error } = await supabase
@@ -137,6 +146,7 @@ export default function Settings() {
           phone: phone || null,
           department: department || null,
           semester: semester || null,
+          regulation: regulation || null,
           roll_number: rollNumber || null,
         })
         .eq('id', user.id);
@@ -219,11 +229,11 @@ export default function Settings() {
                   <UserCircle className="h-4 w-4" />
                   Full Name
                 </Label>
-                <Input 
-                  id="fullName" 
+                <Input
+                  id="fullName"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Enter your full name" 
+                  placeholder="Enter your full name"
                 />
               </div>
               <div className="space-y-2">
@@ -239,11 +249,11 @@ export default function Settings() {
                     <Hash className="h-4 w-4" />
                     Roll Number
                   </Label>
-                  <Input 
-                    id="rollNumber" 
+                  <Input
+                    id="rollNumber"
                     value={rollNumber}
                     onChange={(e) => setRollNumber(e.target.value.toUpperCase())}
-                    placeholder="e.g., 22A91A6101" 
+                    placeholder="e.g., 22A91A6101"
                   />
                 </div>
               )}
@@ -252,11 +262,11 @@ export default function Settings() {
                   <Phone className="h-4 w-4" />
                   Phone
                 </Label>
-                <Input 
-                  id="phone" 
+                <Input
+                  id="phone"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Enter phone number" 
+                  placeholder="Enter phone number"
                 />
               </div>
               <div className="space-y-2">
@@ -297,16 +307,36 @@ export default function Settings() {
                   </Select>
                 </div>
               )}
+              {userRole === 'student' && (
+                <div className="space-y-2">
+                  <Label htmlFor="regulation" className="flex items-center gap-2">
+                    <Hash className="h-4 w-4" />
+                    Regulation
+                  </Label>
+                  <Select value={regulation} onValueChange={setRegulation}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select regulation" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border z-50">
+                      {REGULATIONS.map((reg) => (
+                        <SelectItem key={reg.value} value={reg.value}>
+                          {reg.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="joined" className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
                   Member Since
                 </Label>
-                <Input 
-                  id="joined" 
-                  value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'} 
-                  disabled 
-                  className="bg-muted" 
+                <Input
+                  id="joined"
+                  value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                  disabled
+                  className="bg-muted"
                 />
               </div>
             </div>
@@ -328,9 +358,9 @@ export default function Settings() {
                 <Label>Email Notifications</Label>
                 <p className="text-sm text-muted-foreground">Receive notifications via email</p>
               </div>
-              <Switch 
-                checked={emailNotifications} 
-                onCheckedChange={setEmailNotifications} 
+              <Switch
+                checked={emailNotifications}
+                onCheckedChange={setEmailNotifications}
               />
             </div>
             <Separator />
@@ -339,9 +369,9 @@ export default function Settings() {
                 <Label>Push Notifications</Label>
                 <p className="text-sm text-muted-foreground">Receive push notifications in browser</p>
               </div>
-              <Switch 
-                checked={pushNotifications} 
-                onCheckedChange={setPushNotifications} 
+              <Switch
+                checked={pushNotifications}
+                onCheckedChange={setPushNotifications}
               />
             </div>
           </CardContent>

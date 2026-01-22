@@ -149,11 +149,11 @@ export function useEnrollments(studentId?: string) {
             profiles:teacher_id (full_name)
           )
         `);
-      
+
       if (studentId) {
         query = query.eq('student_id', studentId);
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       return data;
@@ -198,11 +198,11 @@ export function useAssignments(classId?: string) {
           )
         `)
         .order('due_date', { ascending: true });
-      
+
       if (classId) {
         query = query.eq('class_id', classId);
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       return data as Assignment[];
@@ -220,11 +220,11 @@ export function useSubmissions(studentId?: string) {
           *,
           assignments (*)
         `);
-      
+
       if (studentId) {
         query = query.eq('student_id', studentId);
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       return data as Submission[];
@@ -247,11 +247,11 @@ export function useAttendance(studentId?: string) {
           )
         `)
         .order('date', { ascending: false });
-      
+
       if (studentId) {
         query = query.eq('student_id', studentId);
       }
-      
+
       const { data, error } = await query.limit(100);
       if (error) throw error;
       return data as AttendanceRecord[];
@@ -273,11 +273,11 @@ export function useMaterials(classId?: string) {
           profiles:uploaded_by (full_name)
         `)
         .order('created_at', { ascending: false });
-      
+
       if (classId) {
         query = query.eq('class_id', classId);
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       return data as Material[];
@@ -293,15 +293,16 @@ export function useNotifications(userId?: string) {
         .from('notifications')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (userId) {
         query = query.or(`user_id.eq.${userId},user_id.is.null`);
       }
-      
+
       const { data, error } = await query.limit(50);
       if (error) throw error;
       return data as Notification[];
     },
+    enabled: !!userId,
   });
 }
 
@@ -313,11 +314,11 @@ export function useFees(studentId?: string) {
         .from('fees')
         .select('*')
         .order('due_date', { ascending: false });
-      
+
       if (studentId) {
         query = query.eq('student_id', studentId);
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       return data as Fee[];
@@ -344,7 +345,7 @@ export function useKnowledgeBase() {
 
 export function useMarkNotificationRead() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (notificationId: string) => {
       const { error } = await supabase
@@ -361,7 +362,7 @@ export function useMarkNotificationRead() {
 
 export function useSubmitAssignment() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ assignmentId, studentId, fileUrl, notes }: {
       assignmentId: string;
@@ -391,7 +392,7 @@ export function useSubmitAssignment() {
 
 export function useMarkAttendance() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ classId, date, records, markedBy }: {
       classId: string;
@@ -406,7 +407,7 @@ export function useMarkAttendance() {
         status: r.status,
         marked_by: markedBy,
       }));
-      
+
       const { error } = await supabase
         .from('attendance')
         .upsert(attendanceRecords, { onConflict: 'student_id,class_id,date' });
@@ -420,7 +421,7 @@ export function useMarkAttendance() {
 
 export function useUploadMaterial() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ classId, title, description, type, fileUrl, externalLink, uploadedBy }: {
       classId?: string;
@@ -455,7 +456,7 @@ export function useUploadMaterial() {
 
 export function useCreateAssignment() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ classId, title, description, maxMarks, dueDate, createdBy }: {
       classId: string;
@@ -488,7 +489,7 @@ export function useCreateAssignment() {
 
 export function useGradeSubmission() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ submissionId, marks, feedback, gradedBy }: {
       submissionId: string;
@@ -516,7 +517,7 @@ export function useGradeSubmission() {
 
 export function useSendNotification() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ userId, title, message, type }: {
       userId?: string;
@@ -572,7 +573,7 @@ export function useProfiles() {
 // Fee mutations
 export function useAddFee() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (fee: {
       student_id: string;
@@ -604,7 +605,7 @@ export function useAddFee() {
 
 export function useUpdateFeeStatus() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ feeId, status, transactionId }: {
       feeId: string;
@@ -620,7 +621,7 @@ export function useUpdateFeeStatus() {
         paid_date: status === 'paid' ? new Date().toISOString() : null,
         transaction_id: transactionId || null,
       };
-      
+
       const { data, error } = await supabase
         .from('fees')
         .update(updateData)
@@ -639,7 +640,7 @@ export function useUpdateFeeStatus() {
 // User management mutations
 export function useCreateUser() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (user: {
       full_name: string;
@@ -664,7 +665,7 @@ export function useCreateUser() {
           phone: user.phone || null,
         },
       });
-      
+
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       return data.user;
@@ -677,7 +678,7 @@ export function useCreateUser() {
 
 export function useDeleteUser() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (userId: string) => {
       const { error } = await supabase
