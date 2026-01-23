@@ -138,7 +138,7 @@ export default function SidebarLayout() {
 
             {/* Sidebar */}
             <aside className={cn(
-                "fixed top-0 left-0 z-50 h-screen w-72 bg-sidebar border-r border-sidebar-border shadow-xl transition-transform duration-300 lg:translate-x-0 glass-heavy lg:bg-sidebar/95 backdrop-blur-xl",
+                "fixed top-0 left-0 z-50 h-screen w-72 border-r border-sidebar-border shadow-xl transition-transform duration-300 lg:translate-x-0 bg-sidebar/95 backdrop-blur-xl",
                 sidebarOpen ? "translate-x-0" : "-translate-x-full"
             )}>
                 <div className="flex flex-col h-full">
