@@ -32,6 +32,9 @@ import {
   Activity,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import CreatePeriodDialog from '@/components/classes/CreatePeriodDialog';
+import { useState } from 'react';
+
 
 function StudentDashboard() {
   const { user } = useAuth();
@@ -200,6 +203,8 @@ function TeacherDashboard() {
   const { data: assignments, isLoading } = useAssignments();
   const { data: materials } = useMaterials();
   const { data: timetable } = useTimetable();
+  const [createClassOpen, setCreateClassOpen] = useState(false);
+
 
   // Get today's classes count
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
@@ -223,6 +228,10 @@ function TeacherDashboard() {
         userName={user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Faculty'}
         role="teacher"
       />
+
+
+
+
 
       {/* Stats Grid */}
       <StatsGrid stats={[

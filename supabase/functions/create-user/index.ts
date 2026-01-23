@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password, full_name, role, department, semester, regulation, phone } = await req.json();
+    const { email, password, full_name, role, department, subject, semester, regulation, phone } = await req.json();
 
     if (!email || !password || !full_name || !role) {
       return new Response(
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Creating user:', { email, full_name, role, department });
+    console.log('Creating user:', { email, full_name, role, department, subject });
 
     // Create admin client with service role key
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     // Check if user already exists in auth
     const { data: existingUsers } = await adminClient.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find(u => u.email === email);
-    
+
     if (existingUser) {
       console.error('User with this email already exists:', email);
       return new Response(
@@ -119,6 +119,7 @@ Deno.serve(async (req) => {
           email,
           role,
           department: department || null,
+          subject: subject || null,
           semester: semester || null,
           regulation: regulation || null,
           phone: phone || null,
@@ -151,6 +152,7 @@ Deno.serve(async (req) => {
         email,
         role,
         department: department || null,
+        subject: subject || null,
         semester: semester || null,
         regulation: regulation || null,
         phone: phone || null,

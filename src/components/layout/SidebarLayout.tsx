@@ -40,37 +40,41 @@ import {
     PartyPopper,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import SubjectSelectionDialog from '@/components/onboarding/SubjectSelectionDialog';
+
 
 interface NavItem {
     label: string;
     icon: React.ReactNode;
     href: string;
     roles: ('admin' | 'teacher' | 'student')[];
+    color: string; // e.g. "text-blue-500" or custom class suffix
+    indicatorColor: string; // e.g. "border-l-indicator-blue"
 }
 
 const navItems: NavItem[] = [
-    { label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" />, href: '/dashboard', roles: ['admin', 'teacher', 'student'] },
-    { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, href: '/timetable', roles: ['teacher', 'student'] },
-    { label: 'Syllabus', icon: <BookOpen className="h-5 w-5" />, href: '/syllabus', roles: ['teacher', 'student'] },
-    { label: 'Assignments', icon: <ClipboardList className="h-5 w-5" />, href: '/assignments', roles: ['teacher', 'student'] },
-    { label: 'Notes & Materials', icon: <FileText className="h-5 w-5" />, href: '/notes', roles: ['teacher', 'student'] },
-    { label: 'Attendance', icon: <CheckSquare className="h-5 w-5" />, href: '/attendance', roles: ['admin', 'teacher', 'student'] },
-    { label: 'Grades', icon: <BarChart3 className="h-5 w-5" />, href: '/grades', roles: ['teacher', 'student'] },
-    { label: 'CGPA Calculator', icon: <Calculator className="h-5 w-5" />, href: '/cgpa-calculator', roles: ['student'] },
-    { label: 'Exam Schedule', icon: <CalendarDays className="h-5 w-5" />, href: '/exam-schedule', roles: ['admin', 'teacher', 'student'] },
-    { label: 'Academic Calendar', icon: <Calendar className="h-5 w-5" />, href: '/academic-calendar', roles: ['admin', 'teacher', 'student'] },
-    { label: 'Previous Papers', icon: <FileText className="h-5 w-5" />, href: '/previous-papers', roles: ['admin', 'teacher', 'student'] },
-    { label: 'Announcements', icon: <Megaphone className="h-5 w-5" />, href: '/announcements', roles: ['admin', 'teacher', 'student'] },
-    { label: 'Discussion Forums', icon: <MessagesSquare className="h-5 w-5" />, href: '/discussion-forums', roles: ['admin', 'teacher', 'student'] },
-    { label: 'Faculty Feedback', icon: <Star className="h-5 w-5" />, href: '/faculty-feedback', roles: ['admin', 'teacher', 'student'] },
-    { label: 'Library', icon: <Library className="h-5 w-5" />, href: '/library', roles: ['admin', 'student', 'teacher'] },
-    { label: 'Lost & Found', icon: <Search className="h-5 w-5" />, href: '/lost-and-found', roles: ['admin', 'teacher', 'student'] },
-    { label: 'Events', icon: <PartyPopper className="h-5 w-5" />, href: '/events', roles: ['admin', 'teacher', 'student'] },
-    { label: 'Notifications', icon: <Bell className="h-5 w-5" />, href: '/notifications', roles: ['admin', 'teacher', 'student'] },
-    { label: 'Fee Management', icon: <CreditCard className="h-5 w-5" />, href: '/fees', roles: ['admin', 'student'] },
-    { label: 'Manage Users', icon: <Users className="h-5 w-5" />, href: '/users', roles: ['admin'] },
-    { label: 'Upload Content', icon: <Upload className="h-5 w-5" />, href: '/upload', roles: ['admin', 'teacher'] },
-    { label: 'Query Bot', icon: <MessageSquare className="h-5 w-5" />, href: '/query-bot', roles: ['admin', 'teacher', 'student'] },
+    { label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" />, href: '/dashboard', roles: ['admin', 'teacher', 'student'], color: "text-blue-500", indicatorColor: "border-l-indicator-blue" },
+    { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, href: '/timetable', roles: ['teacher', 'student'], color: "text-green-500", indicatorColor: "border-l-indicator-green" },
+    { label: 'Syllabus', icon: <BookOpen className="h-5 w-5" />, href: '/syllabus', roles: ['admin', 'teacher', 'student'], color: "text-purple-500", indicatorColor: "border-l-indicator-purple" },
+    { label: 'Assignments', icon: <ClipboardList className="h-5 w-5" />, href: '/assignments', roles: ['teacher', 'student'], color: "text-orange-500", indicatorColor: "border-l-indicator-orange" },
+    { label: 'Notes & Materials', icon: <FileText className="h-5 w-5" />, href: '/notes', roles: ['teacher', 'student'], color: "text-yellow-500", indicatorColor: "border-l-indicator-orange" },
+    { label: 'Attendance', icon: <CheckSquare className="h-5 w-5" />, href: '/attendance', roles: ['admin', 'teacher', 'student'], color: "text-emerald-500", indicatorColor: "border-l-indicator-green" },
+    { label: 'Grades', icon: <BarChart3 className="h-5 w-5" />, href: '/grades', roles: ['teacher', 'student'], color: "text-cyan-500", indicatorColor: "border-l-indicator-blue" },
+    { label: 'CGPA Calculator', icon: <Calculator className="h-5 w-5" />, href: '/cgpa-calculator', roles: ['student'], color: "text-pink-500", indicatorColor: "border-l-indicator-purple" },
+    { label: 'Exam Schedule', icon: <CalendarDays className="h-5 w-5" />, href: '/exam-schedule', roles: ['admin', 'teacher', 'student'], color: "text-red-500", indicatorColor: "border-l-indicator-orange" },
+    { label: 'Academic Calendar', icon: <Calendar className="h-5 w-5" />, href: '/academic-calendar', roles: ['admin', 'teacher', 'student'], color: "text-indigo-500", indicatorColor: "border-l-indicator-blue" },
+    { label: 'Previous Papers', icon: <FileText className="h-5 w-5" />, href: '/previous-papers', roles: ['admin', 'teacher', 'student'], color: "text-teal-500", indicatorColor: "border-l-indicator-green" },
+    { label: 'Announcements', icon: <Megaphone className="h-5 w-5" />, href: '/announcements', roles: ['admin', 'teacher', 'student'], color: "text-orange-400", indicatorColor: "border-l-indicator-orange" },
+    { label: 'Discussion Forums', icon: <MessagesSquare className="h-5 w-5" />, href: '/discussion-forums', roles: ['admin', 'teacher', 'student'], color: "text-violet-500", indicatorColor: "border-l-indicator-purple" },
+    { label: 'Faculty Feedback', icon: <Star className="h-5 w-5" />, href: '/faculty-feedback', roles: ['admin', 'teacher', 'student'], color: "text-yellow-400", indicatorColor: "border-l-indicator-orange" },
+    { label: 'Library', icon: <Library className="h-5 w-5" />, href: '/library', roles: ['admin', 'student', 'teacher'], color: "text-rose-500", indicatorColor: "border-l-indicator-purple" },
+    { label: 'Lost & Found', icon: <Search className="h-5 w-5" />, href: '/lost-and-found', roles: ['admin', 'teacher', 'student'], color: "text-slate-400", indicatorColor: "border-l-indicator-blue" },
+    { label: 'Events', icon: <PartyPopper className="h-5 w-5" />, href: '/events', roles: ['admin', 'teacher', 'student'], color: "text-fuchsia-500", indicatorColor: "border-l-indicator-purple" },
+    { label: 'Notifications', icon: <Bell className="h-5 w-5" />, href: '/notifications', roles: ['admin', 'teacher', 'student'], color: "text-red-400", indicatorColor: "border-l-indicator-orange" },
+    { label: 'Fee Management', icon: <CreditCard className="h-5 w-5" />, href: '/fees', roles: ['admin', 'student'], color: "text-green-600", indicatorColor: "border-l-indicator-green" },
+    { label: 'Manage Users', icon: <Users className="h-5 w-5" />, href: '/users', roles: ['admin'], color: "text-blue-600", indicatorColor: "border-l-indicator-blue" },
+    { label: 'Upload Content', icon: <Upload className="h-5 w-5" />, href: '/upload', roles: ['admin', 'teacher'], color: "text-amber-500", indicatorColor: "border-l-indicator-orange" },
+    { label: 'Query Bot', icon: <MessageSquare className="h-5 w-5" />, href: '/query-bot', roles: ['admin', 'teacher', 'student'], color: "text-sky-500", indicatorColor: "border-l-indicator-blue" },
 ];
 
 // Global variable to persist scroll position across remounts (backup)
@@ -129,9 +133,12 @@ export default function SidebarLayout() {
                 />
             )}
 
+            <SubjectSelectionDialog />
+
+
             {/* Sidebar */}
             <aside className={cn(
-                "fixed top-0 left-0 z-50 h-screen w-72 bg-sidebar border-r border-sidebar-border shadow-xl transition-transform duration-300 lg:translate-x-0 bg-sidebar/95 backdrop-blur-xl",
+                "fixed top-0 left-0 z-50 h-screen w-72 bg-sidebar border-r border-sidebar-border shadow-xl transition-transform duration-300 lg:translate-x-0 glass-heavy lg:bg-sidebar/95 backdrop-blur-xl",
                 sidebarOpen ? "translate-x-0" : "-translate-x-full"
             )}>
                 <div className="flex flex-col h-full">
@@ -166,13 +173,13 @@ export default function SidebarLayout() {
                                         to={item.href}
                                         onClick={() => setSidebarOpen(false)}
                                         className={cn(
-                                            "group flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all duration-200",
+                                            "group flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all duration-200 border-l-4 border-transparent",
                                             isActive
-                                                ? "bg-sidebar-primary text-white shadow-md shadow-primary/20 scale-[1.02] hover-glow"
-                                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground hover:translate-x-1 hover-lift"
+                                                ? cn("bg-sidebar-accent shadow-md shadow-black/20 scale-[1.02]", item.indicatorColor, item.color)
+                                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:translate-x-1"
                                         )}
                                     >
-                                        <span className={cn("transition-colors", isActive ? "text-white" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground")}>
+                                        <span className={cn("transition-colors", isActive ? "text-current" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground")}>
                                             {item.icon}
                                         </span>
                                         {item.label}

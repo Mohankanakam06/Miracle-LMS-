@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BookOpen, Plus, ChevronDown, ChevronRight, CheckCircle, Circle, Loader2, Filter, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import AddSubjectDialog from '@/components/courses/AddSubjectDialog';
+
 // JNTU-GV Comprehensive Syllabus Data (R20, R21, R22, R23) - Frontend Fallback
 export const JNTUGV_DATA = [
   // R23 REGULATION - CSE
@@ -480,6 +482,8 @@ export const JNTUGV_DATA = [
 
 export default function Syllabus() {
   const { user, userRole } = useAuth();
+
+  const isAdmin = userRole === 'admin';
   const isTeacher = userRole === 'teacher';
 
   const { data: courses, isLoading: loadingCourses } = useCourses();
@@ -514,7 +518,7 @@ export default function Syllabus() {
     const getFiltered = (sourceData: any[]) => {
       return sourceData.filter((course: any) => {
         // 1. Regulation Filter
-        const regulationMatch = course.code?.startsWith(selectedRegulation);
+        const regulationMatch = (course.regulation === selectedRegulation) || course.code?.startsWith(selectedRegulation);
 
         // 2. Branch Filter
         const commonDepartments = ['Basic Science', 'Humanities', 'Engineering Science', 'Management'];
@@ -644,12 +648,9 @@ export default function Syllabus() {
           </div>
 
 
-          {isTeacher && (
-            <Button variant="hero">
-              <Plus className="h-4 w-4" />
-              Add Syllabus
-            </Button>
-          )}
+
+          {isAdmin && <AddSubjectDialog />}
+
         </div>
         {/* Progress Overview */}
         {filteredCourses && filteredCourses.length > 0 ? (

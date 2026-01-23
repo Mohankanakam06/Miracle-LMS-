@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useProfiles } from '@/hooks/useLMS';
+import { useProfiles, useCourses } from '@/hooks/useLMS';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  User, Bell, Shield, Palette, Save, Loader2,
+  User, Bell, Shield, Palette, Save, Loader2, BookOpen,
   Mail, Phone, Building, Calendar, Camera, GraduationCap, Hash, UserCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -46,6 +46,7 @@ const REGULATIONS = [
 export default function Settings() {
   const { user, userRole } = useAuth();
   const { data: profiles } = useProfiles();
+  const { data: courses } = useCourses();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [saving, setSaving] = useState(false);
@@ -57,6 +58,7 @@ export default function Settings() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [department, setDepartment] = useState('');
+  const [subject, setSubject] = useState('');
   const [semester, setSemester] = useState('');
   const [regulation, setRegulation] = useState('');
   const [rollNumber, setRollNumber] = useState('');
@@ -70,6 +72,7 @@ export default function Settings() {
       setFullName(currentProfile.full_name || '');
       setPhone(currentProfile.phone || '');
       setDepartment(currentProfile.department || '');
+      setSubject(currentProfile.subject || '');
       setSemester(currentProfile.semester || '');
       setRegulation(currentProfile.regulation || '');
       setRollNumber(currentProfile.roll_number || '');
@@ -145,6 +148,7 @@ export default function Settings() {
           full_name: fullName || null,
           phone: phone || null,
           department: department || null,
+          subject: subject || null,
           semester: semester || null,
           regulation: regulation || null,
           roll_number: rollNumber || null,
@@ -287,6 +291,27 @@ export default function Settings() {
                   </SelectContent>
                 </Select>
               </div>
+              {userRole === 'teacher' && (
+                <div className="space-y-2">
+                  <Label htmlFor="subject" className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    Subject Specialization
+                  </Label>
+                  <Select value={subject} onValueChange={setSubject}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select primary subject" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border z-50 h-[200px]">
+                      {courses?.map((course) => (
+                        <SelectItem key={course.id} value={course.name}>
+                          {course.name} ({course.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">This sets your primary subject profile</p>
+                </div>
+              )}
               {userRole === 'student' && (
                 <div className="space-y-2">
                   <Label htmlFor="semester" className="flex items-center gap-2">

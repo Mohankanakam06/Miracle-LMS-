@@ -43,6 +43,7 @@ const userSchema = z.object({
   department: z.string().optional(),
   semester: z.string().optional(),
   regulation: z.string().optional(),
+  subject: z.string().optional(),
   phone: z.string().optional(),
 });
 
@@ -51,7 +52,7 @@ type UserFormValues = z.infer<typeof userSchema>;
 export default function AddUserDialog() {
   const [open, setOpen] = useState(false);
   const createUser = useCreateUser();
-  
+
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userSchema),
     defaultValues: {
@@ -62,6 +63,7 @@ export default function AddUserDialog() {
       department: '',
       semester: '',
       regulation: '',
+      subject: '',
       phone: '',
     },
   });
@@ -78,6 +80,7 @@ export default function AddUserDialog() {
         department: values.department,
         semester: values.role === 'student' ? values.semester : undefined,
         regulation: values.role === 'student' ? values.regulation : undefined,
+        subject: values.role === 'teacher' ? values.subject : undefined,
         phone: values.phone,
       });
       toast.success('User created successfully');
@@ -188,6 +191,21 @@ export default function AddUserDialog() {
                 </FormItem>
               )}
             />
+            {watchRole === 'teacher' && (
+              <FormField
+                control={form.control}
+                name="subject"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subject</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter subject" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             {watchRole === 'student' && (
               <>
                 <FormField

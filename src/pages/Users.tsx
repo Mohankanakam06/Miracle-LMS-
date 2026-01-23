@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { 
-  Users, UserPlus, Search, Filter, MoreVertical, 
+import {
+  Users, UserPlus, Search, Filter, MoreVertical,
   GraduationCap, BookOpen, Shield, Edit, Trash2, Mail, Loader2
 } from 'lucide-react';
 import {
@@ -30,23 +30,23 @@ export default function UsersManagement() {
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string } | null>(null);
 
   // Filter profiles by role
-  const students = useMemo(() => 
-    profiles?.filter(p => p.role === 'student') || [], 
+  const students = useMemo(() =>
+    profiles?.filter(p => p.role === 'student') || [],
     [profiles]
   );
-  const teachers = useMemo(() => 
-    profiles?.filter(p => p.role === 'teacher') || [], 
+  const teachers = useMemo(() =>
+    profiles?.filter(p => p.role === 'teacher') || [],
     [profiles]
   );
-  const admins = useMemo(() => 
-    profiles?.filter(p => p.role === 'admin') || [], 
+  const admins = useMemo(() =>
+    profiles?.filter(p => p.role === 'admin') || [],
     [profiles]
   );
 
   // Filter by search query
   const filterBySearch = (list: typeof profiles) => {
     if (!searchQuery) return list;
-    return list?.filter(p => 
+    return list?.filter(p =>
       p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.email?.toLowerCase().includes(searchQuery.toLowerCase())
     ) || [];
@@ -149,8 +149,8 @@ export default function UsersManagement() {
             <div className="flex gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search users by name or email..." 
+                <Input
+                  placeholder="Search users by name or email..."
                   className="pl-9"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -219,7 +219,7 @@ export default function UsersManagement() {
                                 <Mail className="h-4 w-4 mr-2" />
                                 Send Email
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => {
                                   setSelectedUser({ id: student.id, name: student.full_name || 'User' });
@@ -265,7 +265,10 @@ export default function UsersManagement() {
                         </div>
                         <div className="flex items-center gap-6">
                           <div className="text-right">
-                            <p className="text-sm font-medium">{teacher.department || 'N/A'}</p>
+                            <p className="text-sm font-medium">
+                              {teacher.department || 'N/A'}
+                              {teacher.subject && <span className="text-muted-foreground ml-1">• {teacher.subject}</span>}
+                            </p>
                           </div>
                           {getStatusBadge('active')}
                           <DropdownMenu>
@@ -283,7 +286,7 @@ export default function UsersManagement() {
                                 <Mail className="h-4 w-4 mr-2" />
                                 Send Email
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => {
                                   setSelectedUser({ id: teacher.id, name: teacher.full_name || 'User' });

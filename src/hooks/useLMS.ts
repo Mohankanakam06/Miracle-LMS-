@@ -11,6 +11,8 @@ export interface Course {
   semester: number;
   department: string;
   credits: number;
+  regulation?: string;
+  units?: { title: string; content: string; }[];
 }
 
 export interface ClassWithDetails {
@@ -454,6 +456,43 @@ export function useUploadMaterial() {
   });
 }
 
+export function useCreateCourse() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (course: {
+      name: string;
+      code: string;
+      description?: string;
+      semester: number;
+      department: string;
+      credits: number;
+      regulation?: string;
+      units?: { title: string; content: string; }[];
+    }) => {
+      const { data, error } = await supabase
+        .from('courses')
+        .insert({
+          name: course.name,
+          code: course.code,
+          description: course.description,
+          semester: course.semester,
+          department: course.department,
+          credits: course.credits,
+          regulation: course.regulation,
+          units: course.units ? JSON.stringify(course.units) : null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+    },
+  });
+}
+
 export function useCreateClass() {
   const queryClient = useQueryClient();
 
@@ -579,6 +618,7 @@ export interface Profile {
   email: string | null;
   role: string;
   department: string | null;
+  subject: string | null;
   semester: string | null;
   regulation: string | null;
   roll_number: string | null;
@@ -595,8 +635,7 @@ export function useProfiles() {
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data as Profile[];
+      return data as unknown as Profile[];
     },
   });
 }
@@ -679,6 +718,7 @@ export function useCreateUser() {
       password: string;
       role: 'student' | 'teacher' | 'admin';
       department?: string;
+      subject?: string;
       semester?: string;
       regulation?: string;
       phone?: string;
@@ -691,6 +731,7 @@ export function useCreateUser() {
           full_name: user.full_name,
           role: user.role,
           department: user.department || null,
+          subject: user.subject || null,
           semester: user.semester || null,
           regulation: user.regulation || null,
           phone: user.phone || null,

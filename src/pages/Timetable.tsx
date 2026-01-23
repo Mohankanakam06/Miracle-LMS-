@@ -6,9 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, User, Plus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import CreatePeriodDialog from '@/components/classes/CreatePeriodDialog';
+import { useState, useMemo } from 'react';
 
 import { JNTUGV_DATA } from './Syllabus';
-import { useMemo } from 'react';
+
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const timeSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
@@ -47,6 +49,7 @@ const getRegulation = (roll: string | undefined): string => {
 export default function Timetable() {
   const { user, userRole } = useAuth();
   const isTeacher = userRole === 'teacher';
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const { data: dbTimetable, isLoading } = useTimetable(user?.id);
 
@@ -153,11 +156,16 @@ export default function Timetable() {
             </p>
           </div>
           {isTeacher && (
-            <Button variant="hero">
+            <Button variant="hero" onClick={() => setCreateDialogOpen(true)}>
               <Plus className="h-4 w-4" />
               Add Class
             </Button>
           )}
+
+          <CreatePeriodDialog
+            open={createDialogOpen}
+            onOpenChange={setCreateDialogOpen}
+          />
         </div>
 
         {/* Today's Classes Quick View */}
