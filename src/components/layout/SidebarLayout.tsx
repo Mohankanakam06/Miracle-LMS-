@@ -54,7 +54,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
     { label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" />, href: '/dashboard', roles: ['admin', 'teacher', 'student'], color: "text-blue-500", indicatorColor: "border-l-indicator-blue" },
-    { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, href: '/timetable', roles: ['teacher', 'student'], color: "text-green-500", indicatorColor: "border-l-indicator-green" },
+    { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, href: '/timetable', roles: ['admin', 'teacher', 'student'], color: "text-green-500", indicatorColor: "border-l-indicator-green" },
     { label: 'Syllabus', icon: <BookOpen className="h-5 w-5" />, href: '/syllabus', roles: ['admin', 'teacher', 'student'], color: "text-purple-500", indicatorColor: "border-l-indicator-purple" },
     { label: 'Assignments', icon: <ClipboardList className="h-5 w-5" />, href: '/assignments', roles: ['teacher', 'student'], color: "text-orange-500", indicatorColor: "border-l-indicator-orange" },
     { label: 'Notes & Materials', icon: <FileText className="h-5 w-5" />, href: '/notes', roles: ['teacher', 'student'], color: "text-yellow-500", indicatorColor: "border-l-indicator-orange" },

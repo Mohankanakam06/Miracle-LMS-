@@ -1,130 +1,118 @@
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useTimetable, useClasses } from '@/hooks/useLMS';
+import { useTimetable } from '@/hooks/useLMS';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import TimetableGenerator from '@/components/timetable/TimetableGenerator';
+import ManualTimetableEntry from '@/components/timetable/ManualTimetableEntry';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, User, Plus, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Calendar, Clock, Wand2, Loader2, TableIcon, Phone, User, GraduationCap, FileDown, PenLine, Building2, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import CreatePeriodDialog from '@/components/classes/CreatePeriodDialog';
-import { useState, useMemo } from 'react';
+import { generateTimetablePdf } from '@/lib/generateTimetablePdf';
 
-import { JNTUGV_DATA } from './Syllabus';
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+const TIME_SLOTS = [
+  { start: '09:15', end: '10:05', label: '9:15 - 10:05' },
+  { start: '10:05', end: '10:55', label: '10:05 - 10:55' },
+  { start: '11:05', end: '11:55', label: '11:05 - 11:55' },
+  { start: '11:55', end: '12:45', label: '11:55 - 12:45' },
+  { start: '12:45', end: '13:25', label: '12:45 - 1:25', isLunch: true },
+  { start: '13:25', end: '14:15', label: '1:25 - 2:15' },
+  { start: '14:15', end: '15:05', label: '2:15 - 3:05' },
+  { start: '15:05', end: '15:55', label: '3:05 - 3:55' },
+];
 
-const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const timeSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
+// Academic taxonomy
+const DEPARTMENTS = [
+  { value: 'CSE', label: 'Computer Science & Engineering' },
+  { value: 'AI&DS', label: 'AI & Data Science' },
+  { value: 'EEE', label: 'Electrical & Electronics Engineering' },
+  { value: 'ECE', label: 'Electronics & Communication Engineering' },
+  { value: 'MECH', label: 'Mechanical Engineering' },
+];
+
+const YEARS = [
+  { value: 'I', label: 'I Year' },
+  { value: 'II', label: 'II Year' },
+  { value: 'III', label: 'III Year' },
+  { value: 'IV', label: 'IV Year' },
+];
+
+const SEMESTERS = [
+  { value: '1-1', label: '1st Semester' },
+  { value: '1-2', label: '2nd Semester' },
+  { value: '2-1', label: '3rd Semester' },
+  { value: '2-2', label: '4th Semester' },
+  { value: '3-1', label: '5th Semester' },
+  { value: '3-2', label: '6th Semester' },
+  { value: '4-1', label: '7th Semester' },
+  { value: '4-2', label: '8th Semester' },
+];
+
+const SECTIONS = [
+  { value: 'A', label: 'Section A' },
+  { value: 'B', label: 'Section B' },
+  { value: 'C', label: 'Section C' },
+];
 
 const subjectColors: Record<string, string> = {
-  'Data Structures & Algorithms': 'bg-primary text-primary-foreground shadow-md hover:bg-primary/90 border-none',
-  'Database Management Systems': 'bg-purple-600 text-white shadow-md hover:bg-purple-700 border-none',
-  'Operating Systems': 'bg-emerald-600 text-white shadow-md hover:bg-emerald-700 border-none',
-  'Computer Networks': 'bg-amber-500 text-black shadow-md hover:bg-amber-600 border-none',
-  'Software Engineering': 'bg-sky-600 text-white shadow-md hover:bg-sky-700 border-none',
-  'default': 'bg-secondary text-secondary-foreground shadow-sm border-none',
+  'Data Structures & Algorithms': 'bg-blue-100 text-blue-800 border-blue-300',
+  'Database Management Systems': 'bg-purple-100 text-purple-800 border-purple-300',
+  'Operating Systems': 'bg-green-100 text-green-800 border-green-300',
+  'Computer Networks': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  'Software Engineering': 'bg-cyan-100 text-cyan-800 border-cyan-300',
+  'Machine Learning': 'bg-pink-100 text-pink-800 border-pink-300',
+  'Artificial Intelligence': 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  'default': 'bg-gray-100 text-gray-800 border-gray-300',
 };
 
-// Helper to determine semester from "2-2" format
-const getSemesterNumber = (semString: string | undefined): number => {
-  if (!semString) return 4; // Default to 2-2
-  const map: Record<string, number> = {
-    '1-1': 1, '1-2': 2,
-    '2-1': 3, '2-2': 4,
-    '3-1': 5, '3-2': 6,
-    '4-1': 7, '4-2': 8
-  };
-  return map[semString] || 4;
+// Generate abbreviation from course name
+const getAbbreviation = (name?: string): string => {
+  if (!name) return '---';
+  const words = name.split(' ').filter(w => w.length > 2 && !['and', 'the', 'for', 'with'].includes(w.toLowerCase()));
+  if (words.length === 1) return words[0].substring(0, 3).toUpperCase();
+  return words.map(w => w[0]).join('').toUpperCase().substring(0, 4);
 };
 
-// Helper to determine regulation from Roll Number
-const getRegulation = (roll: string | undefined): string => {
-  if (!roll) return 'R23';
-  if (roll.startsWith('24') || roll.startsWith('23')) return 'R23';
-  if (roll.startsWith('22')) return 'R22';
-  if (roll.startsWith('21')) return 'R21';
-  if (roll.startsWith('20')) return 'R20';
-  return 'R23';
+// Get full department name
+const getDepartmentFullName = (code: string): string => {
+  const dept = DEPARTMENTS.find(d => d.value === code);
+  return dept ? `DEPARTMENT OF ${dept.label.toUpperCase()}` : 'DEPARTMENT';
+};
+
+// Get semester display text
+const getSemesterDisplay = (year: string, semester: string): string => {
+  const yearLabel = YEARS.find(y => y.value === year)?.label || year;
+  const semLabel = SEMESTERS.find(s => s.value === semester)?.label || semester;
+  return `${yearLabel} ${semLabel}`;
 };
 
 export default function Timetable() {
   const { user, userRole } = useAuth();
-  const isTeacher = userRole === 'teacher';
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  // Only admin and teacher can access manual entry and auto-generate features
+  const isTeacherOrAdmin = userRole === 'admin' || userRole === 'teacher';
 
-  const { data: dbTimetable, isLoading } = useTimetable(user?.id);
 
-  // Dynamic Timetable Generation (Client-Side Fallback)
-  // If DB is empty, we generate a schedule based on Syllabus Data for the User's Branch/Sem.
-  const timetableData = useMemo(() => {
-    // If we have DB data, use it
-    if (dbTimetable && dbTimetable.length > 0) return dbTimetable;
+  // Filter states
+  const [selectedDepartment, setSelectedDepartment] = useState('CSE');
+  const [selectedYear, setSelectedYear] = useState('III');
+  const [selectedSemester, setSelectedSemester] = useState('3-2');
+  const [selectedSection, setSelectedSection] = useState('A');
 
-    // Otherwise, generate!
-    if (!user) return [];
+  const { data: timetableData, isLoading } = useTimetable(user?.id);
 
-    const u = user as any;
-    const currentSem = getSemesterNumber(u.semester); // e.g., 4
-    const currentBranch = u.department || 'CSE';
-    // Use explicitly set regulation if available, otherwise fallback to guessing from roll number
-    const currentReg = u.regulation || getRegulation(u.roll_number);
-
-    // Get relevant courses
-    const myCourses = JNTUGV_DATA.filter((c: any) => {
-      const regMatch = c.code.startsWith(currentReg);
-      const semMatch = c.semester === currentSem;
-      const branchMatch = c.department === currentBranch ||
-        ['Basic Science', 'Humanities', 'Engineering Science', 'Management'].includes(c.department || '');
-      return regMatch && semMatch && branchMatch;
+  const getScheduleForSlot = (day: string, slot: typeof TIME_SLOTS[0]) => {
+    return timetableData?.find(entry => {
+      const entryStart = entry.start_time.substring(0, 5);
+      // Case insensitive day match
+      return entry.day_of_week.toLowerCase() === day.toLowerCase() && entryStart === slot.start;
     });
-
-    if (myCourses.length === 0) return [];
-
-    // Distribute courses into slots (Mock Schedule)
-    // Simple deterministic distribution
-    const entries: any[] = [];
-    let courseIndex = 0;
-
-    days.forEach((day, dIndex) => {
-      timeSlots.forEach((time, tIndex) => {
-        // Skip Lunch (13:00)
-        if (time === '13:00') return;
-        // Skip weekends afternoon
-        if (day === 'Saturday' && tIndex > 3) return;
-
-        // Pick a course
-        // Rotate through courses based on (Day + Time) hash or simple index
-        // We want ~constant slots for same day/time
-        const pickIndex = (dIndex + tIndex + courseIndex) % myCourses.length;
-        const course = myCourses[pickIndex];
-
-        entries.push({
-          id: `mock-${day}-${time}`,
-          day_of_week: day,
-          start_time: time,
-          end_time: timeSlots[tIndex + 1] || '17:00',
-          room: 'Room ' + (100 + currentSem * 10 + dIndex),
-          classes: {
-            courses: { name: course.name },
-            profiles: { full_name: 'Faculty' },
-            room: 'Room ' + (100 + currentSem * 10 + dIndex)
-          }
-        });
-      });
-      courseIndex++; // Shift rotation each day
-    });
-
-    return entries;
-
-  }, [dbTimetable, user]);
-  const getScheduleForSlot = (day: string, time: string) => {
-    return timetableData?.find((entry: any) =>
-      entry.day_of_week === day && entry.start_time.startsWith(time)
-    );
-  };
-
-  const getTodaySchedule = () => {
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    return timetableData?.filter(entry => entry.day_of_week === today) || [];
   };
 
   const getSubjectColor = (courseName?: string) => {
@@ -132,7 +120,21 @@ export default function Timetable() {
     return subjectColors[courseName] || subjectColors.default;
   };
 
-  const uniqueSubjects = [...new Set(timetableData?.map(t => t.classes?.courses?.name).filter(Boolean))];
+  // Get unique subjects with faculty info for the legend
+  const subjectFacultyMap = new Map<string, { name: string; code: string; faculty: string; phone?: string }>();
+  timetableData?.forEach(t => {
+    const courseName = t.classes?.courses?.name;
+    const courseCode = t.classes?.courses?.code;
+    const facultyName = t.classes?.profiles?.full_name;
+    if (courseName && !subjectFacultyMap.has(courseName)) {
+      subjectFacultyMap.set(courseName, {
+        name: courseName,
+        code: courseCode || getAbbreviation(courseName),
+        faculty: facultyName || 'TBA',
+        phone: undefined,
+      });
+    }
+  });
 
   if (isLoading) {
     return (
@@ -146,137 +148,385 @@ export default function Timetable() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 stagger-fade-in">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-display font-bold">Timetable</h1>
             <p className="text-muted-foreground">
-              {isTeacher ? 'Your teaching schedule' : 'Your class schedule for this semester'}
+              {isTeacherOrAdmin ? 'Manage and generate class schedules' : 'Your class schedule for this semester'}
             </p>
           </div>
-          {isTeacher && (
-            <Button variant="hero" onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add Class
-            </Button>
-          )}
-
-          <CreatePeriodDialog
-            open={createDialogOpen}
-            onOpenChange={setCreateDialogOpen}
-          />
         </div>
 
-        {/* Today's Classes Quick View */}
-        <Card className="glass-card overflow-hidden">
-          <CardHeader>
-            <CardTitle className="font-display flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              Today's Classes
-            </CardTitle>
-            <CardDescription>Quick overview of your schedule for today</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {getTodaySchedule().length > 0 ? (
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                {getTodaySchedule().slice(0, 4).map((item, index) => (
-                  <div key={item.id} className={cn(
-                    "p-4 rounded-xl border transition-all duration-300 hover:scale-[1.02] hover:shadow-lg",
-                    getSubjectColor(item.classes?.courses?.name)
-                  )}
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
-                    <div className="flex items-center gap-2 text-sm mb-2">
-                      <Clock className="h-4 w-4" />
-                      <span className="font-medium">{item.start_time.slice(0, 5)} - {item.end_time.slice(0, 5)}</span>
-                    </div>
-                    <p className="font-semibold">{item.classes?.courses?.name || 'Unknown Subject'}</p>
-                    <div className="mt-2 space-y-1 text-sm opacity-90">
-                      <div className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {item.classes?.profiles?.full_name || 'TBA'}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {item.room || item.classes?.room || 'TBA'}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-8">No classes scheduled for today</p>
-            )}
-          </CardContent>
-        </Card>
+        {isTeacherOrAdmin ? (
+          <Tabs defaultValue="view" className="space-y-6">
+            <TabsList className="grid w-full max-w-lg grid-cols-3">
+              <TabsTrigger value="view" className="flex items-center gap-2">
+                <TableIcon className="h-4 w-4" />
+                View Schedule
+              </TabsTrigger>
+              <TabsTrigger value="manual" className="flex items-center gap-2">
+                <PenLine className="h-4 w-4" />
+                Manual Entry
+              </TabsTrigger>
+              <TabsTrigger value="generate" className="flex items-center gap-2">
+                <Wand2 className="h-4 w-4" />
+                Auto Generate
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Weekly Timetable */}
-        <Card className="glass-card overflow-hidden">
-          <CardHeader>
-            <CardTitle className="font-display">Weekly Schedule</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {timetableData && timetableData.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px]">
-                  <thead>
-                    <tr className="bg-muted/50">
-                      <th className="p-3 text-left font-medium text-muted-foreground w-20">Time</th>
-                      {days.map(day => (
-                        <th key={day} className="p-3 text-left font-medium text-muted-foreground">{day}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {timeSlots.map((time, timeIndex) => (
-                      <tr key={time} className={timeIndex % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
-                        <td className="p-3 font-medium text-sm text-muted-foreground border-r">{time}</td>
-                        {days.map(day => {
-                          const schedule = getScheduleForSlot(day, time);
-                          return (
-                            <td key={day} className="p-2 border-r last:border-r-0">
-                              {schedule && (
-                                <div className={cn(
-                                  "p-2 rounded-md text-xs shadow-sm transition-colors",
-                                  getSubjectColor(schedule.classes?.courses?.name)
-                                )}>
-                                  <p className="font-semibold">{schedule.classes?.courses?.name}</p>
-                                  <p className="opacity-90">{schedule.room || schedule.classes?.room}</p>
-                                </div>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-8">No timetable entries found</p>
-            )}
-          </CardContent>
-        </Card>
+            <TabsContent value="view" className="space-y-6">
+              <TimetableView
+                timetableData={timetableData}
+                getScheduleForSlot={getScheduleForSlot}
+                getSubjectColor={getSubjectColor}
+                subjectFacultyMap={subjectFacultyMap}
+                selectedDepartment={selectedDepartment}
+                setSelectedDepartment={setSelectedDepartment}
+                selectedYear={selectedYear}
+                setSelectedYear={setSelectedYear}
+                selectedSemester={selectedSemester}
+                setSelectedSemester={setSelectedSemester}
+                selectedSection={selectedSection}
+                setSelectedSection={setSelectedSection}
+                isAdmin={true}
+              />
+            </TabsContent>
 
-        {/* Legend */}
-        {uniqueSubjects.length > 0 && (
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="font-display text-base">Subject Legend</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-3">
-                {uniqueSubjects.map((subject) => (
-                  <Badge key={subject} variant="outline" className={cn("font-normal", getSubjectColor(subject))}>
-                    {subject}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+            <TabsContent value="manual">
+              <ManualTimetableEntry />
+            </TabsContent>
+
+            <TabsContent value="generate">
+              <TimetableGenerator />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <TimetableView
+            timetableData={timetableData}
+            getScheduleForSlot={getScheduleForSlot}
+            getSubjectColor={getSubjectColor}
+            subjectFacultyMap={subjectFacultyMap}
+            selectedDepartment={selectedDepartment}
+            setSelectedDepartment={setSelectedDepartment}
+            selectedYear={selectedYear}
+            setSelectedYear={setSelectedYear}
+            selectedSemester={selectedSemester}
+            setSelectedSemester={setSelectedSemester}
+            selectedSection={selectedSection}
+            setSelectedSection={setSelectedSection}
+            isAdmin={false}
+          />
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+interface TimetableViewProps {
+  timetableData: any[] | undefined;
+  getScheduleForSlot: (day: string, slot: typeof TIME_SLOTS[0]) => any;
+  getSubjectColor: (courseName?: string) => string;
+  subjectFacultyMap: Map<string, { name: string; code: string; faculty: string; phone?: string }>;
+  selectedDepartment: string;
+  setSelectedDepartment: (value: string) => void;
+  selectedYear: string;
+  setSelectedYear: (value: string) => void;
+  selectedSemester: string;
+  setSelectedSemester: (value: string) => void;
+  selectedSection: string;
+  setSelectedSection: (value: string) => void;
+  isAdmin: boolean;
+}
+
+function TimetableView({
+  timetableData,
+  getScheduleForSlot,
+  getSubjectColor,
+  subjectFacultyMap,
+  selectedDepartment,
+  setSelectedDepartment,
+  selectedYear,
+  setSelectedYear,
+  selectedSemester,
+  setSelectedSemester,
+  selectedSection,
+  setSelectedSection,
+  isAdmin,
+}: TimetableViewProps) {
+  const handleExportPdf = () => {
+    if (!timetableData) return;
+    generateTimetablePdf({
+      timetableData,
+      departmentName: getDepartmentFullName(selectedDepartment),
+      academicYear: '2025-2026',
+      semester: getSemesterDisplay(selectedYear, selectedSemester),
+    });
+  };
+
+  return (
+    <DashboardLayout>
+      {/* Filter Controls - Admin Only */}
+      {isAdmin && (
+        <Card className="shadow-card">
+          <CardContent className="pt-6">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Branch / Department
+                </Label>
+                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENTS.map(dept => (
+                      <SelectItem key={dept.value} value={dept.value}>
+                        {dept.value} - {dept.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  Year
+                </Label>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {YEARS.map(year => (
+                      <SelectItem key={year.value} value={year.value}>
+                        {year.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  Semester
+                </Label>
+                <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select semester" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEMESTERS.map(sem => (
+                      <SelectItem key={sem.value} value={sem.value}>
+                        {sem.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Section
+                </Label>
+                <Select value={selectedSection} onValueChange={setSelectedSection}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select section" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SECTIONS.map(sec => (
+                      <SelectItem key={sec.value} value={sec.value}>
+                        {sec.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* College Header */}
+      <Card className="shadow-card border-2 border-primary/20">
+        <CardHeader className="text-center pb-2">
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <GraduationCap className="h-8 w-8 text-primary" />
+            <div>
+              <CardTitle className="text-xl font-display text-primary">
+                {getDepartmentFullName(selectedDepartment)}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {getSemesterDisplay(selectedYear, selectedSemester)} | Section {selectedSection} | A.Y: 2025-2026
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-center mt-3">
+            <Button onClick={handleExportPdf} variant="outline" className="gap-2">
+              <FileDown className="h-4 w-4" />
+              Export as PDF
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Weekly Timetable Grid */}
+      <Card className="shadow-card overflow-hidden">
+        <CardContent className="p-0">
+          {timetableData && timetableData.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px] border-collapse">
+                <thead>
+                  <tr className="bg-primary text-primary-foreground">
+                    <th className="p-3 text-center font-bold border border-primary-foreground/20 w-28">
+                      DAY/TIME
+                    </th>
+                    {TIME_SLOTS.map((slot, idx) => (
+                      <th
+                        key={idx}
+                        className={cn(
+                          "p-2 text-center font-semibold text-xs border border-primary-foreground/20",
+                          slot.isLunch && "bg-amber-500"
+                        )}
+                      >
+                        {slot.isLunch ? (
+                          <div className="flex flex-col">
+                            <span>LUNCH</span>
+                            <span>BREAK</span>
+                          </div>
+                        ) : (
+                          slot.label
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {DAYS.map((day, dayIndex) => (
+                    <tr key={day} className={dayIndex % 2 === 0 ? 'bg-background' : 'bg-muted/30'}>
+                      <td className="p-3 font-bold text-sm text-center border bg-muted/50">
+                        {day}
+                      </td>
+                      {TIME_SLOTS.map((slot, slotIndex) => {
+                        if (slot.isLunch) {
+                          return (
+                            <td
+                              key={slotIndex}
+                              className="p-2 text-center border bg-amber-50 dark:bg-amber-900/20"
+                              rowSpan={1}
+                            >
+                              <span className="text-amber-600 dark:text-amber-400 font-medium text-xs">
+                                🍽️
+                              </span>
+                            </td>
+                          );
+                        }
+
+                        const schedule = getScheduleForSlot(day, slot);
+                        const courseName = schedule?.classes?.courses?.name;
+                        const courseCode = schedule?.classes?.courses?.code;
+                        const abbrev = courseCode || getAbbreviation(courseName);
+
+                        return (
+                          <td
+                            key={slotIndex}
+                            className={cn(
+                              "p-2 text-center border min-w-[80px]",
+                              schedule && getSubjectColor(courseName)
+                            )}
+                          >
+                            {schedule && (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="font-bold text-sm">{abbrev}</span>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground text-center">No timetable entries found</p>
+              <p className="text-sm text-muted-foreground mt-1">Ask your administrator to generate a timetable</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Subject Legend Table */}
+      {subjectFacultyMap.size > 0 && (
+        <Card className="shadow-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-lg flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              Subject & Faculty Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="font-bold">SUBJECT CODE</TableHead>
+                  <TableHead className="font-bold">SUBJECT NAME</TableHead>
+                  <TableHead className="font-bold">FACULTY</TableHead>
+                  <TableHead className="font-bold">
+                    <div className="flex items-center gap-1">
+                      <Phone className="h-4 w-4" />
+                      CONTACT
+                    </div>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from(subjectFacultyMap.values()).map((subject, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell>
+                      <Badge variant="outline" className={cn("font-mono", getSubjectColor(subject.name))}>
+                        {subject.code || getAbbreviation(subject.name)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-medium">{subject.name}</TableCell>
+                    <TableCell>{subject.faculty}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {subject.phone || '---'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Footer Info */}
+      <Card className="shadow-card">
+        <CardContent className="py-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Time Table In-Charge</p>
+              <p className="font-semibold">---</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Class In-Charge</p>
+              <p className="font-semibold">---</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">HOD</p>
+              <p className="font-semibold">---</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </DashboardLayout >
   );
 }

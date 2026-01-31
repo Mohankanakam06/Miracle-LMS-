@@ -25,7 +25,7 @@ export default function GradesChart({ data }: GradesChartProps) {
     return 'hsl(0, 84%, 60%)';
   };
 
-  const averagePercentage = chartData.length > 0 
+  const averagePercentage = chartData.length > 0
     ? Math.round(chartData.reduce((sum, d) => sum + d.percentage, 0) / chartData.length)
     : 0;
 
@@ -55,30 +55,30 @@ export default function GradesChart({ data }: GradesChartProps) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
-                <XAxis 
-                  type="number" 
-                  domain={[0, 100]} 
+                <XAxis
+                  type="number"
+                  domain={[0, 100]}
                   tickFormatter={(value) => `${value}%`}
                   stroke="hsl(var(--muted-foreground))"
                   fontSize={12}
                 />
-                <YAxis 
-                  type="category" 
-                  dataKey="subject" 
+                <YAxis
+                  type="category"
+                  dataKey="subject"
                   width={80}
                   stroke="hsl(var(--muted-foreground))"
                   fontSize={12}
                   tickLine={false}
                 />
                 <Tooltip
-                  contentStyle={{ 
-                    background: 'hsl(var(--card))', 
+                  contentStyle={{
+                    background: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
                     boxShadow: 'var(--shadow-lg)'
                   }}
-                  formatter={(value: number, name: string, props: any) => [
-                    `${props.payload.marks}/${props.payload.maxMarks} (${value}%)`,
+                  formatter={(value: number) => [
+                    `${value}%`,
                     'Score'
                   ]}
                 />

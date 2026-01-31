@@ -67,9 +67,10 @@ export default function SubjectSelectionDialog() {
             // Invalidate profiles query to update the UI immediately without reload
             await queryClient.invalidateQueries({ queryKey: ['profiles'] });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error saving subject:', error);
-            toast.error(error.message || 'Failed to save subject');
+            const message = error instanceof Error ? error.message : 'Failed to save subject';
+            toast.error(message);
         } finally {
             setSaving(false);
         }

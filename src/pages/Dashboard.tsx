@@ -320,6 +320,7 @@ function AdminDashboard() {
   const { data: profiles } = useProfiles();
   const { data: courses } = useCourses();
   const { data: fees } = useFees();
+  const { data: timetable } = useTimetable();
 
   // Calculate user counts
   const totalUsers = profiles?.length || 0;
@@ -328,6 +329,11 @@ function AdminDashboard() {
 
   // Calculate fee collection
   const totalCollected = fees?.filter(f => f.status === 'paid').reduce((sum, f) => sum + Number(f.amount), 0) || 0;
+
+  // Get today's schedule count
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const todayClasses = timetable?.filter(t => t.day_of_week === today).length || 0;
+  const totalScheduledClasses = timetable?.length || 0;
 
   return (
     <div className="space-y-6 stagger-fade-in">
@@ -373,6 +379,7 @@ function AdminDashboard() {
             { label: 'Manage Users', icon: Users, href: '/users', variant: 'primary' },
             { label: 'Notifications', icon: Bell, href: '/notifications', variant: 'default' },
             { label: 'Fee Management', icon: DollarSign, href: '/fees', variant: 'default' },
+            { label: 'Timetable', icon: Calendar, href: '/timetable', variant: 'default' },
             { label: 'AI Assistant', icon: GraduationCap, href: '/query-bot', variant: 'accent' },
           ]}
         />
@@ -425,6 +432,60 @@ function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Timetable Overview */}
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-card to-muted/30">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="font-display text-lg flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Calendar className="h-5 w-5 text-primary" />
+              </div>
+              Timetable Overview
+            </CardTitle>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/timetable">Manage Timetable</Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Clock className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{todayClasses}</p>
+                  <p className="text-xs text-muted-foreground">Classes Today ({today})</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 rounded-xl bg-success/5 border border-success/10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-success/10">
+                  <Calendar className="h-5 w-5 text-success" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{totalScheduledClasses}</p>
+                  <p className="text-xs text-muted-foreground">Total Scheduled</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 rounded-xl bg-info/5 border border-info/10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-info/10">
+                  <Users className="h-5 w-5 text-info" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{teacherCount}</p>
+                  <p className="text-xs text-muted-foreground">Active Faculty</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* System Status */}
       <div className="grid gap-6 lg:grid-cols-3">

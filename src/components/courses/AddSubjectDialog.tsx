@@ -81,13 +81,14 @@ export default function AddSubjectDialog() {
                 semester: parseInt(values.semester),
                 credits: parseInt(values.credits),
                 regulation: values.regulation,
-                units: values.units,
+                units: values.units?.filter(u => u.title && u.content) as { title: string; content: string }[] | undefined,
             });
             toast.success('Subject/Course created successfully');
             form.reset();
             setOpen(false);
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to create subject');
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Failed to create subject';
+            toast.error(message);
         }
     };
 
