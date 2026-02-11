@@ -3,12 +3,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
 };
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
@@ -57,7 +58,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password, full_name, role, department, subject, semester, regulation, phone } = await req.json();
+    const { email, password, full_name, role, department, subject, semester, regulation, phone, year, section } = await req.json();
 
     if (!email || !password || !full_name || !role) {
       return new Response(
@@ -66,7 +67,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Creating user:', { email, full_name, role, department, subject });
+    console.log('Creating user:', { email, full_name, role, department, year, section });
 
     // Create admin client with service role key
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
@@ -123,6 +124,8 @@ Deno.serve(async (req) => {
           semester: semester || null,
           regulation: regulation || null,
           phone: phone || null,
+          year: year || null,
+          section: section || null,
         })
         .eq('id', authData.user.id)
         .select()
@@ -156,6 +159,8 @@ Deno.serve(async (req) => {
         semester: semester || null,
         regulation: regulation || null,
         phone: phone || null,
+        year: year || null,
+        section: section || null,
       })
       .select()
       .single();

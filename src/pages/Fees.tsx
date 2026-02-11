@@ -7,24 +7,25 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  CreditCard, IndianRupee, Calendar, CheckCircle, AlertCircle, 
+import {
+  CreditCard, IndianRupee, Calendar, CheckCircle, AlertCircle,
   Clock, Download, Search, Filter, FileText, Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import AddFeeDialog from '@/components/fees/AddFeeDialog';
 import UpdateFeeDialog from '@/components/fees/UpdateFeeDialog';
+import PaymentDialog from '@/components/fees/PaymentDialog';
 import { generateFeeReceipt } from '@/lib/generateFeeReceipt';
 
 export default function Fees() {
   const { user, userRole } = useAuth();
   const isAdmin = userRole === 'admin';
-  
+
   // For admin, fetch all fees; for students, fetch their own fees
   const { data: fees, isLoading } = useFees(isAdmin ? undefined : user?.id);
   const { data: profiles } = useProfiles();
-  
+
   // Get current user's profile for receipt
   const currentProfile = profiles?.find(p => p.id === user?.id);
 
@@ -185,8 +186,8 @@ export default function Fees() {
                         <div>
                           <p className="font-medium">{fee.description}</p>
                           <p className="text-sm text-muted-foreground">
-                            {fee.status === 'paid' 
-                              ? `Paid on ${format(new Date(fee.paid_date!), 'MMM dd, yyyy')}` 
+                            {fee.status === 'paid'
+                              ? `Paid on ${format(new Date(fee.paid_date!), 'MMM dd, yyyy')}`
                               : `Due on ${format(new Date(fee.due_date), 'MMM dd, yyyy')}`
                             }
                           </p>
@@ -197,8 +198,8 @@ export default function Fees() {
                         {getStatusBadge(fee.status || 'pending')}
                         <UpdateFeeDialog fee={fee} />
                         {fee.status === 'paid' && (
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleDownloadReceipt(fee, fee.student_id)}
                             title="Download Receipt"
@@ -273,27 +274,28 @@ export default function Fees() {
         </div>
 
         {/* Pay Now */}
-        {feeStats.pending > 0 && (
-          <Card className="shadow-card border-primary/20">
-            <CardContent className="p-6">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-primary/10">
-                    <CreditCard className="h-6 w-6 text-primary" />
+        {feeStats.pending > 0 && (() => {
+          const pendingFee = fees?.find(f => f.status === 'pending' || f.status === 'overdue');
+          if (!pendingFee) return null;
+          return (
+            <Card className="shadow-card border-primary/20">
+              <CardContent className="p-6">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-primary/10">
+                      <CreditCard className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Pay your pending fee</p>
+                      <p className="text-sm text-muted-foreground">Amount due: ₹{feeStats.pending.toLocaleString()}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold">Pay your pending fee</p>
-                    <p className="text-sm text-muted-foreground">Amount due: ₹{feeStats.pending.toLocaleString()}</p>
-                  </div>
+                  <PaymentDialog fee={pendingFee} totalPending={feeStats.pending} />
                 </div>
-                <Button variant="hero" size="lg">
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Pay Now
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Payment History */}
         <Card className="shadow-card">
@@ -322,8 +324,8 @@ export default function Fees() {
                       <div>
                         <p className="font-medium">{item.description}</p>
                         <p className="text-sm text-muted-foreground">
-                          {item.status === 'paid' 
-                            ? `Paid on ${format(new Date(item.paid_date!), 'MMM dd, yyyy')}` 
+                          {item.status === 'paid'
+                            ? `Paid on ${format(new Date(item.paid_date!), 'MMM dd, yyyy')}`
                             : `Due on ${format(new Date(item.due_date), 'MMM dd, yyyy')}`
                           }
                         </p>
@@ -336,8 +338,8 @@ export default function Fees() {
                       <p className="text-lg font-semibold">₹{item.amount.toLocaleString()}</p>
                       {getStatusBadge(item.status || 'pending')}
                       {item.status === 'paid' && (
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => handleDownloadReceipt(item, item.student_id)}
                           title="Download Receipt"

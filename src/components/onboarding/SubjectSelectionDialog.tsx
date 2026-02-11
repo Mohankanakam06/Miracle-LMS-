@@ -35,8 +35,8 @@ export default function SubjectSelectionDialog() {
         // 1. User is logged in
         // 2. User is a teacher
         // 3. Profile data is loaded
-        // 4. Subject is missing/empty/null
-        if (user && userRole === 'teacher' && currentProfile && !currentProfile.subject) {
+        // 4. Subject is null (not set yet, not skipped with empty string)
+        if (user && userRole === 'teacher' && currentProfile && currentProfile.subject === null) {
             setOpen(true);
         } else {
             setOpen(false);
@@ -44,27 +44,25 @@ export default function SubjectSelectionDialog() {
     }, [user, userRole, currentProfile]);
 
     const handleSave = async () => {
-        if (!user?.id || !selectedSubject) return;
+        if (!user?.id) return;
 
         setSaving(true);
         try {
             const { error } = await supabase
                 .from('profiles')
-                .update({ subject: selectedSubject } as any)
+                .update({ subject: selectedSubject || null } as any)
                 .eq('id', user.id);
 
             if (error) throw error;
 
-            toast.success('Subject selection saved!');
+            if (selectedSubject) {
+                toast.success('Subject selection saved!');
+            } else {
+                toast.success('You can set your subject later in Settings');
+            }
             setOpen(false);
-            // Optionally force reload or invalidate queries, but React Query should handle profile update if we invalidate
-            // Since we are using direct supabase call, we should ideally invalidate.
-            // But for this simple implementation, the local state update in settings might be needed, 
-            // but here we just close the dialog. The Dashboard might re-render.
 
-            // To be safe, reload window or rely on realtime if enabled. 
-            // For now, let's assume global state update will happen eventually or refresh.
-            // Invalidate profiles query to update the UI immediately without reload
+            // Invalidate profiles query to update the UI immediately
             await queryClient.invalidateQueries({ queryKey: ['profiles'] });
 
         } catch (error: unknown) {
@@ -76,26 +74,40 @@ export default function SubjectSelectionDialog() {
         }
     };
 
-    // prevent closing by clicking outside if it's mandatory
-    // onOpenChange={(val) => !val ? null : setOpen(val)} which effectively disables closing if we don't pass a setter that allows false
-    // But for better UX, we'll allow closing but it might pop up again on refresh/nav.
-    // Actually, "onOpenChange={setOpen}" allows closing. 
-    // To force, we can control it and only allow closing if subject is saved (handled by internal logic)
-    // or just pass `onOpenChange={() => {}}` (no-op) to prevent closing via backdrop.
+    const handleSkip = async () => {
+        if (!user?.id) return;
+
+        setSaving(true);
+        try {
+            // Set subject to empty string to mark as "skipped"
+            const { error } = await supabase
+                .from('profiles')
+                .update({ subject: '' } as any)
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            toast.info('Subject selection skipped. You can set it later in Settings.');
+            setOpen(false);
+
+            await queryClient.invalidateQueries({ queryKey: ['profiles'] });
+
+        } catch (error: unknown) {
+            console.error('Error skipping subject:', error);
+            const message = error instanceof Error ? error.message : 'Failed to skip';
+            toast.error(message);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <Dialog open={open} onOpenChange={(val) => { if (!val && selectedSubject) setOpen(false); }}>
-            {/* Simple hack: only allow close if value selected? No, usually false is passed on escape/backdrop.
-                 To make it strictly modal (blocking): don't provide onOpenChange or provide no-op. 
-                 But shadcn Dialog might require onOpenChange. 
-                 Let's stick to simple open state.
-             */}
             <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
                 <DialogHeader>
-                    <DialogTitle>Select Your Subject</DialogTitle>
+                    <DialogTitle>Select Your Subject (Optional)</DialogTitle>
                     <DialogDescription>
-                        Welcome! Please select your primary subject specialization to continue.
-                        You can change this later in Settings.
+                        Welcome! You can select your primary subject specialization now or skip and set it later in Settings.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -103,22 +115,40 @@ export default function SubjectSelectionDialog() {
                         <Label htmlFor="subject">Subject</Label>
                         <Select value={selectedSubject} onValueChange={setSelectedSubject}>
                             <SelectTrigger id="subject">
-                                <SelectValue placeholder="Select a subject" />
+                                <SelectValue placeholder="Select a subject (optional)" />
                             </SelectTrigger>
                             <SelectContent className="bg-background border z-50 max-h-[300px]">
-                                {courses?.map((course) => (
-                                    <SelectItem key={course.id} value={course.name}>
-                                        {course.name} ({course.code})
-                                    </SelectItem>
-                                ))}
+                                {courses && courses.length > 0 ? (
+                                    courses.map((course) => (
+                                        <SelectItem key={course.id} value={course.name}>
+                                            {course.name} ({course.code})
+                                        </SelectItem>
+                                    ))
+                                ) : (
+                                    <div className="p-4 text-sm text-muted-foreground text-center">
+                                        No courses available yet
+                                    </div>
+                                )}
                             </SelectContent>
                         </Select>
+                        {courses && courses.length === 0 && (
+                            <p className="text-xs text-muted-foreground">
+                                No courses found. You can skip this step and set your subject later.
+                            </p>
+                        )}
                     </div>
                 </div>
-                <DialogFooter>
-                    <Button onClick={handleSave} disabled={!selectedSubject || saving}>
+                <DialogFooter className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={handleSkip}
+                        disabled={saving}
+                    >
+                        Skip for Now
+                    </Button>
+                    <Button onClick={handleSave} disabled={saving}>
                         {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                        Confirm Selection
+                        {selectedSubject ? 'Confirm Selection' : 'Continue'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

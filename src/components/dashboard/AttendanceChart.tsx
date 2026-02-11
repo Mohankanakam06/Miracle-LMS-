@@ -13,7 +13,7 @@ const COLORS = ['hsl(142, 71%, 45%)', 'hsl(0, 84%, 60%)', 'hsl(38, 92%, 50%)'];
 export default function AttendanceChart({ present, absent, late }: AttendanceChartProps) {
   const total = present + absent + late;
   const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-  
+
   const data = [
     { name: 'Present', value: present, color: 'hsl(142, 71%, 45%)' },
     { name: 'Absent', value: absent, color: 'hsl(0, 84%, 60%)' },
@@ -36,7 +36,7 @@ export default function AttendanceChart({ present, absent, late }: AttendanceCha
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
           <div className="relative w-32 h-32">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -54,9 +54,9 @@ export default function AttendanceChart({ present, absent, late }: AttendanceCha
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    background: 'hsl(var(--card))', 
+                <Tooltip
+                  contentStyle={{
+                    background: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
                     boxShadow: 'var(--shadow-lg)'

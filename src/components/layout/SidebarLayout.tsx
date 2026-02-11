@@ -2,6 +2,8 @@ import { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useLMS';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -38,6 +40,7 @@ import {
     Library,
     Search,
     PartyPopper,
+    FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SubjectSelectionDialog from '@/components/onboarding/SubjectSelectionDialog';
@@ -73,6 +76,7 @@ const navItems: NavItem[] = [
     { label: 'Notifications', icon: <Bell className="h-5 w-5" />, href: '/notifications', roles: ['admin', 'teacher', 'student'], color: "text-red-400", indicatorColor: "border-l-indicator-orange" },
     { label: 'Fee Management', icon: <CreditCard className="h-5 w-5" />, href: '/fees', roles: ['admin', 'student'], color: "text-green-600", indicatorColor: "border-l-indicator-green" },
     { label: 'Manage Users', icon: <Users className="h-5 w-5" />, href: '/users', roles: ['admin'], color: "text-blue-600", indicatorColor: "border-l-indicator-blue" },
+    { label: 'Master List Upload', icon: <FileSpreadsheet className="h-5 w-5" />, href: '/master-list-upload', roles: ['admin'], color: "text-emerald-600", indicatorColor: "border-l-indicator-green" },
     { label: 'Upload Content', icon: <Upload className="h-5 w-5" />, href: '/upload', roles: ['admin', 'teacher'], color: "text-amber-500", indicatorColor: "border-l-indicator-orange" },
     { label: 'Query Bot', icon: <MessageSquare className="h-5 w-5" />, href: '/query-bot', roles: ['admin', 'teacher', 'student'], color: "text-sky-500", indicatorColor: "border-l-indicator-blue" },
 ];
@@ -87,6 +91,29 @@ export default function SidebarLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { data: notifications } = useNotifications(user?.id);
     const sidebarRef = useRef<HTMLDivElement>(null);
+
+    const { data: profile } = useQuery({
+        queryKey: ['profile-context', user?.id],
+        queryFn: async () => {
+            if (!user?.id) return null;
+
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('department, semester, section')
+                .eq('id', user?.id)
+                .single();
+
+            // If error (e.g., columns don't exist yet), just return null
+            // This allows the app to work before migration is applied
+            if (error) {
+                console.log('Profile cohort fields not available yet:', error.message);
+                return null;
+            }
+            return data;
+        },
+        enabled: !!user?.id && userRole === 'student',
+        retry: false // Don't retry on error
+    });
 
     const unreadCount = notifications?.filter(n => !n.read).length || 0;
 
@@ -107,8 +134,17 @@ export default function SidebarLayout() {
     }, []);
 
     const handleSignOut = async () => {
-        await signOut();
-        navigate('/auth');
+        try {
+            await signOut();
+            // Use setTimeout to ensure state is fully cleared before navigation
+            setTimeout(() => {
+                navigate('/', { replace: true });
+            }, 100);
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Navigate anyway even if there's an error
+            navigate('/', { replace: true });
+        }
     };
 
     const filteredNavItems = navItems.filter(item =>
@@ -124,7 +160,7 @@ export default function SidebarLayout() {
     };
 
     return (
-        <div className="min-h-screen bg-background bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background">
+        <div className="min-h-screen bg-background flex w-full">
             {/* Mobile sidebar backdrop */}
             {sidebarOpen && (
                 <div
@@ -135,24 +171,29 @@ export default function SidebarLayout() {
 
             <SubjectSelectionDialog />
 
-
             {/* Sidebar */}
             <aside className={cn(
-                "fixed top-0 left-0 z-50 h-screen w-72 border-r border-sidebar-border shadow-xl transition-transform duration-300 lg:translate-x-0 bg-sidebar/95 backdrop-blur-xl",
+                "fixed top-0 left-0 z-50 h-screen w-72 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-300 lg:translate-x-0",
                 sidebarOpen ? "translate-x-0" : "-translate-x-full"
             )}>
                 <div className="flex flex-col h-full">
                     {/* Logo */}
-                    <div className="flex items-center gap-3 p-6 border-b border-sidebar-border/50">
-                        <img src="/logo.png" alt="Miracle" className="h-12 w-12 rounded-full shadow-lg" />
+                    <div className="flex items-center gap-2 p-6 border-b border-sidebar-border/20">
+                        <img src="/logo.png" alt="Miracle" className="h-8 w-8" />
                         <div>
-                            <h1 className="font-display font-bold text-sidebar-foreground text-base tracking-tight">Miracle Portal</h1>
-                            <p className="text-xs text-sidebar-foreground/60 font-medium">{roleLabels[userRole as keyof typeof roleLabels] || 'User'}</p>
+                            <h1 className="font-bold text-lg text-sidebar-foreground">Miracle Portal</h1>
+                            {userRole === 'student' && profile ? (
+                                <span className="text-xs text-sidebar-foreground/70 block">
+                                    {profile.department} - {profile.semester} (Sec {profile.section})
+                                </span>
+                            ) : (
+                                <p className="text-xs text-sidebar-foreground/70">{roleLabels[userRole as keyof typeof roleLabels] || 'User'}</p>
+                            )}
                         </div>
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="lg:hidden ml-auto text-sidebar-foreground hover:bg-sidebar-accent"
+                            className="lg:hidden ml-auto text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                             onClick={() => setSidebarOpen(false)}
                         >
                             <X className="h-5 w-5" />
@@ -164,7 +205,7 @@ export default function SidebarLayout() {
                         ref={sidebarRef}
                         className="flex-1 py-6 px-4 overflow-y-auto"
                     >
-                        <nav className="space-y-1.5">
+                        <nav className="space-y-1">
                             {filteredNavItems.map((item) => {
                                 const isActive = location.pathname === item.href;
                                 return (
@@ -173,15 +214,13 @@ export default function SidebarLayout() {
                                         to={item.href}
                                         onClick={() => setSidebarOpen(false)}
                                         className={cn(
-                                            "group flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all duration-200 border-l-4 border-transparent",
+                                            "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                                             isActive
-                                                ? cn("bg-sidebar-accent shadow-md shadow-black/20 scale-[1.02]", item.indicatorColor, item.color)
-                                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:translate-x-1"
+                                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                                         )}
                                     >
-                                        <span className={cn("transition-colors", isActive ? "text-current" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground")}>
-                                            {item.icon}
-                                        </span>
+                                        {item.icon}
                                         {item.label}
                                     </Link>
                                 );
@@ -190,35 +229,35 @@ export default function SidebarLayout() {
                     </div>
 
                     {/* User section */}
-                    <div className="p-4 border-t border-sidebar-border/50 backdrop-blur-md bg-sidebar/30">
+                    <div className="p-4 border-t border-sidebar-border/20">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button className="flex items-center gap-3 w-full p-2.5 rounded-xl hover:bg-sidebar-accent/50 transition-colors border border-transparent hover:border-sidebar-border/50">
-                                    <Avatar className="h-10 w-10 border-2 border-sidebar-primary/20">
-                                        <AvatarFallback className="bg-sidebar-primary/20 text-sidebar-primary font-bold">
+                                <button className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors text-sidebar-foreground">
+                                    <Avatar className="h-9 w-9 border border-sidebar-border/50">
+                                        <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground">
                                             {userInitials}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="flex-1 text-left overflow-hidden">
-                                        <p className="text-sm font-semibold text-sidebar-foreground truncate">
+                                        <p className="text-sm font-medium truncate">
                                             {user?.email}
                                         </p>
-                                        <p className="text-xs text-sidebar-foreground/60 capitalize flex items-center gap-1.5">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                        <p className="text-xs text-sidebar-foreground/70">
                                             Online
                                         </p>
                                     </div>
+                                    <Settings className="h-4 w-4 text-sidebar-foreground/70" />
                                 </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 glass-heavy border-sidebar-border">
+                            <DropdownMenuContent align="end" className="w-56">
                                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                                <DropdownMenuSeparator className="bg-border/50" />
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => navigate('/settings')}>
                                     <Settings className="mr-2 h-4 w-4" />
                                     Settings
                                 </DropdownMenuItem>
-                                <DropdownMenuSeparator className="bg-border/50" />
-                                <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                                     <LogOut className="mr-2 h-4 w-4" />
                                     Log out
                                 </DropdownMenuItem>
@@ -229,44 +268,42 @@ export default function SidebarLayout() {
             </aside>
 
             {/* Main content */}
-            <div className="lg:pl-72 transition-all duration-300">
+            <div className="flex-1 lg:pl-72 transition-all duration-300 flex flex-col min-h-screen">
                 {/* Top bar */}
-                <header className="sticky top-0 z-30 flex items-center gap-4 h-20 px-6 sm:px-8 glass text-foreground border-b border-border/40">
+                <header className="sticky top-0 z-30 flex items-center gap-4 h-16 px-4 md:px-6 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="lg:hidden -ml-2 hover:bg-secondary"
+                        className="lg:hidden -ml-2"
                         onClick={() => setSidebarOpen(true)}
                     >
                         <Menu className="h-6 w-6" />
                     </Button>
 
                     <div className="flex-1">
-                        <h2 className="font-display font-bold text-2xl tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                        <h2 className="font-semibold text-lg truncate">
                             {filteredNavItems.find(item => item.href === location.pathname)?.label || 'Dashboard'}
                         </h2>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 md:gap-4">
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="relative hover:bg-secondary rounded-full w-10 h-10"
+                            className="relative"
                             onClick={() => navigate('/notifications')}
                         >
-                            <Bell className="h-5 w-5 text-foreground/70" />
+                            <Bell className="h-5 w-5" />
                             {unreadCount > 0 && (
-                                <span className="absolute top-2.5 right-2.5 h-2 w-2 bg-destructive rounded-full ring-2 ring-background"></span>
+                                <span className="absolute top-2 right-2 h-2 w-2 bg-destructive rounded-full"></span>
                             )}
                         </Button>
                     </div>
                 </header>
 
                 {/* Page content */}
-                <main className="p-6 sm:p-8 max-w-7xl mx-auto">
-                    <div className="animate-page-enter">
-                        <Outlet />
-                    </div>
+                <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
+                    <Outlet />
                 </main>
             </div>
         </div>

@@ -67,15 +67,19 @@ export default function Index() {
                 <h1 className="font-display font-bold text-lg tracking-tight">Miracle LMS</h1>
               </div>
             </div>
-            <Link to="/auth">
-              <Button variant="ghost" className="hidden sm:flex hover:bg-white/10" asChild>
-                <span>Login</span>
-              </Button>
-              <Button variant="default" className="rounded-full shadow-lg shadow-primary/25 hover:scale-105 transition-transform">
-                Get Started
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link to="/auth">
+                <Button variant="ghost" className="hidden sm:flex hover:bg-white/10">
+                  Login
+                </Button>
+              </Link>
+              <Link to="/auth">
+                <Button variant="default" className="rounded-full shadow-lg shadow-primary/25 hover:scale-105 transition-transform">
+                  Get Started
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
           </nav>
 
           <div className="grid lg:grid-cols-2 gap-16 items-center mt-16 md:mt-0">

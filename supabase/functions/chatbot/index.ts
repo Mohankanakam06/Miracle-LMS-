@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 interface ChatRequest {
@@ -21,7 +22,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
-    
+
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { message, userId, userRole } = await req.json() as ChatRequest;
 
@@ -48,7 +49,7 @@ serve(async (req) => {
           )
         `)
         .limit(10);
-      
+
       if (timetable && timetable.length > 0) {
         contextData += `\n\nUser's Timetable:\n${JSON.stringify(timetable, null, 2)}`;
       }
@@ -61,11 +62,11 @@ serve(async (req) => {
         .eq("student_id", userId)
         .order("date", { ascending: false })
         .limit(30);
-      
+
       if (attendance && attendance.length > 0) {
         const present = attendance.filter(a => a.status === "present").length;
         const total = attendance.length;
-        contextData += `\n\nAttendance Summary: ${present}/${total} classes attended (${Math.round(present/total*100)}%)`;
+        contextData += `\n\nAttendance Summary: ${present}/${total} classes attended (${Math.round(present / total * 100)}%)`;
       }
     }
 
@@ -82,7 +83,7 @@ serve(async (req) => {
         .gte("due_date", new Date().toISOString())
         .order("due_date", { ascending: true })
         .limit(10);
-      
+
       if (assignments && assignments.length > 0) {
         contextData += `\n\nUpcoming Assignments:\n${JSON.stringify(assignments, null, 2)}`;
       }
@@ -93,7 +94,7 @@ serve(async (req) => {
         .from("fees")
         .select("*")
         .eq("student_id", userId);
-      
+
       if (fees && fees.length > 0) {
         const totalDue = fees.reduce((sum, f) => sum + (f.status === "pending" ? Number(f.amount) : 0), 0);
         const totalPaid = fees.reduce((sum, f) => sum + (f.status === "paid" ? Number(f.amount) : 0), 0);
@@ -110,14 +111,14 @@ serve(async (req) => {
         `)
         .eq("student_id", userId)
         .eq("status", "graded");
-      
+
       if (grades && grades.length > 0) {
         contextData += `\n\nGrades:\n${JSON.stringify(grades, null, 2)}`;
       }
     }
 
     // Step 3: Build AI prompt
-    const kbContext = kbResults && kbResults.length > 0 
+    const kbContext = kbResults && kbResults.length > 0
       ? `\n\nRelevant Knowledge Base Entries:\n${kbResults.map(k => `Q: ${k.question}\nA: ${k.answer}`).join("\n\n")}`
       : "";
 
@@ -169,15 +170,15 @@ Guidelines:
     else if (lowerMessage.includes("fee") || lowerMessage.includes("payment")) intent = "fees";
     else if (lowerMessage.includes("grade") || lowerMessage.includes("marks")) intent = "grades";
     else if (lowerMessage.includes("syllabus")) intent = "syllabus";
-    
+
     // Step 6: Log conversation
     await supabase.from("chat_logs").insert({
       user_id: userId,
-      query: message,
+      message: message, // Fixed: changed 'query' to 'message' to match schema
       response: botResponse,
       intent,
       confidence,
-      escalated: false,
+      // escalated: false, // Removed: field does not exist in schema
     });
 
     return new Response(
@@ -194,7 +195,7 @@ Guidelines:
   } catch (error) {
     console.error("Chatbot error:", error);
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: "An error occurred processing your query",
         response: "I'm having trouble right now. Please try again later or contact support."
       }),

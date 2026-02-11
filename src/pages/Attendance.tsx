@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useAttendance, useMarkAttendance, useProfiles, useClasses } from '@/hooks/useLMS';
+import { useAttendance, useMarkAttendance, useProfiles, useTeacherClasses, useClassStudents } from '@/hooks/useLMS';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import CreatePeriodDialog from '@/components/classes/CreatePeriodDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,51 +16,32 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-const DEPARTMENTS = [
-  { value: 'CSE', label: 'CSE' },
-  { value: 'AI&DS', label: 'AI&DS' },
-  { value: 'EEE', label: 'EEE' },
-  { value: 'ECE', label: 'ECE' },
-  { value: 'MECH', label: 'MECH' },
-];
-
-const SEMESTERS = [
-  { value: '1-1', label: '1-1' },
-  { value: '1-2', label: '1-2' },
-  { value: '2-1', label: '2-1' },
-  { value: '2-2', label: '2-2' },
-  { value: '3-1', label: '3-1' },
-  { value: '3-2', label: '3-2' },
-  { value: '4-1', label: '4-1' },
-  { value: '4-2', label: '4-2' },
-];
-
 export default function Attendance() {
   const { user, userRole } = useAuth();
   const isTeacher = userRole === 'teacher' || userRole === 'admin';
 
   const { data: attendanceRecords, isLoading } = useAttendance(user?.id);
-  const { data: profiles } = useProfiles();
-  const { data: classes } = useClasses();
+  // Fetch classes assigned to this teacher
+  const { data: teacherClasses } = useTeacherClasses(user?.id || '');
   const markAttendance = useMarkAttendance();
 
   const [selectedClass, setSelectedClass] = useState<string>('');
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
-  const [selectedSemester, setSelectedSemester] = useState<string>('');
   const [attendanceState, setAttendanceState] = useState<Record<string, boolean>>({});
   const [createPeriodOpen, setCreatePeriodOpen] = useState(false);
 
-  // Filter students by department and semester
-  const filteredStudents = useMemo(() => {
-    if (!profiles) return [];
+  // Fetch students enrolled in the selected class
+  const { data: enrolledStudents, isLoading: loadingStudents } = useClassStudents(selectedClass);
 
-    return profiles.filter(profile => {
-      if (profile.role !== 'student') return false;
-      if (selectedDepartment && profile.department !== selectedDepartment) return false;
-      if (selectedSemester && profile.semester !== selectedSemester) return false;
-      return true;
-    });
-  }, [profiles, selectedDepartment, selectedSemester]);
+  // When class changes, reset attendance state
+  useEffect(() => {
+    setAttendanceState({});
+  }, [selectedClass]);
+
+  // Use enrolled students as the filtered list
+  const filteredStudents = enrolledStudents || [];
+
+  // Get details of selected class for display
+  const selectedClassDetails = teacherClasses?.find(c => c.id === selectedClass);
 
   // Calculate attendance stats for student view
   const attendanceStats = useMemo(() => {
@@ -178,7 +159,7 @@ export default function Attendance() {
   }
 
   if (isTeacher) {
-    const showStudentList = selectedClass && selectedDepartment && selectedSemester;
+    const showStudentList = !!selectedClass;
     const presentCount = Object.values(attendanceState).filter(Boolean).length;
     const absentCount = filteredStudents.length - presentCount;
 
@@ -189,50 +170,20 @@ export default function Attendance() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-display font-bold">Take Attendance</h1>
-              <p className="text-muted-foreground">Mark attendance by class and section</p>
+              <p className="text-muted-foreground">Mark attendance for your assigned classes</p>
             </div>
-            <Button variant="outline" onClick={() => setCreatePeriodOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Create Period
-            </Button>
           </div>
 
           {/* Filters */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Select value={selectedClass} onValueChange={setSelectedClass}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Class/Period" />
+                <SelectValue placeholder="Select Class/Subject" />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
-                {classes?.map((cls) => (
+                {teacherClasses?.map((cls) => (
                   <SelectItem key={cls.id} value={cls.id}>
-                    {cls.courses?.name} - {cls.section}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Department" />
-              </SelectTrigger>
-              <SelectContent className="bg-background border z-50">
-                {DEPARTMENTS.map((dept) => (
-                  <SelectItem key={dept.value} value={dept.value}>
-                    {dept.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedSemester} onValueChange={setSelectedSemester}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Semester" />
-              </SelectTrigger>
-              <SelectContent className="bg-background border z-50">
-                {SEMESTERS.map((sem) => (
-                  <SelectItem key={sem.value} value={sem.value}>
-                    {sem.label}
+                    {cls.courses?.name} - {cls.section} ({cls.enrollments?.[0]?.count || 0} students)
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -243,7 +194,7 @@ export default function Attendance() {
             <Card className="shadow-card">
               <CardContent className="p-8 text-center">
                 <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Select department and semester to view students</p>
+                <p className="text-muted-foreground">Select a class to view enrolled students</p>
               </CardContent>
             </Card>
           ) : (
@@ -252,7 +203,7 @@ export default function Attendance() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
                     <CardTitle className="font-display">
-                      {selectedDepartment} - {selectedSemester}
+                      {selectedClassDetails?.courses?.name} - Section {selectedClassDetails?.section}
                     </CardTitle>
                     <CardDescription>
                       {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -315,7 +266,7 @@ export default function Attendance() {
                   </div>
                 ) : (
                   <p className="text-muted-foreground text-center py-8">
-                    No students found for {selectedDepartment} - {selectedSemester}
+                    No students found for this class
                   </p>
                 )}
               </CardContent>

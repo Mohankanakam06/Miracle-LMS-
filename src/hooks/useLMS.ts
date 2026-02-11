@@ -2,6 +2,23 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
+// Helper to convert "3-2" string to semester number (6)
+const getSemesterNumber = (semString: string | null): number | null => {
+  if (!semString) return null;
+  const match = semString.match(/^(\d)-(\d)$/);
+  if (!match) return null;
+  const year = parseInt(match[1]);
+  const sem = parseInt(match[2]);
+  return (year - 1) * 2 + sem;
+};
+
+// Helper to convert semester number (6) to "3-2" string
+const getSemesterString = (semNumber: number): string => {
+  const year = Math.ceil(semNumber / 2);
+  const sem = semNumber % 2 === 0 ? 2 : 1;
+  return `${year}-${sem}`;
+};
+
 // Types
 export interface Course {
   id: string;
@@ -21,6 +38,8 @@ export interface ClassWithDetails {
   teacher_id: string;
   section: string;
   academic_year: string;
+  department?: string;
+  semester?: string;
   room: string;
   courses?: Course;
   profiles?: { full_name: string };
@@ -164,15 +183,61 @@ export function useEnrollments(studentId?: string) {
   });
 }
 
-export function useTimetable(studentId?: string) {
+export function useClassStudents(classId?: string) {
   return useQuery({
-    queryKey: ['timetable', studentId],
+    queryKey: ['class_students', classId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // 1. Get class details to know target audience (Dept/Sem/Sec)
+      const { data: classData, error: classError } = await supabase
+        .from('classes')
+        .select(`
+          section,
+          courses (
+             department,
+             semester
+          )
+        `)
+        .eq('id', classId)
+        .single();
+
+      if (classError) throw classError;
+      if (!classData || !classData.courses) return [];
+
+      const targetSemString = getSemesterString(classData.courses.semester);
+      const targetDept = classData.courses.department;
+      const targetSec = classData.section;
+
+      // 2. Fetch all students matching this criteria
+      // Note: This replaces the 'enrollments' table dependency for fetching students
+      const { data: students, error: studentsError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, roll_number, department, semester, section')
+        .eq('department', targetDept)
+        .eq('semester', targetSemString)
+        .eq('section', targetSec)
+        .eq('role', 'student');
+
+      if (studentsError) throw studentsError;
+
+      // Optional: Also fetch manually enrolled students? 
+      // For now, let's stick to attribute-based as primary.
+      // If we wanted to merge, we'd query enrollments and merge arrays.
+
+      return students || [];
+    },
+    enabled: !!classId,
+  });
+}
+
+export function useTimetable(studentId?: string, filters?: { department?: string, semester?: string, section?: string }) {
+  return useQuery({
+    queryKey: ['timetable', studentId, filters],
+    queryFn: async () => {
+      let query = supabase
         .from('timetable')
         .select(`
           *,
-          classes (
+          classes!inner (
             *,
             courses (*),
             profiles:teacher_id (full_name)
@@ -180,9 +245,123 @@ export function useTimetable(studentId?: string) {
         `)
         .order('day_of_week')
         .order('start_time');
+
+      if (filters?.department) {
+        query = query.eq('classes.courses.department', filters.department);
+      }
+      if (filters?.semester) {
+        // Need to handle number vs string semester potentially, assuming passed string "3-2"
+        const semNum = getSemesterNumber(filters.semester);
+        if (semNum) query = query.eq('classes.courses.semester', semNum);
+      }
+      if (filters?.section) {
+        query = query.eq('classes.section', filters.section);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as TimetableEntry[];
     },
+  });
+}
+
+export function useStudentTimetable(studentId: string) {
+  return useQuery({
+    queryKey: ['timetable', 'student', studentId],
+    queryFn: async () => {
+      // 1. Get student profile details
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('department, semester, section')
+        .eq('id', studentId)
+        .single();
+
+      if (profileError || !profile) return [];
+
+      const semNum = getSemesterNumber(profile.semester);
+
+      // 2. Get timetable for classes matching student attributes
+      // Match: Class Section == Student Section AND Course Dept == Student Dept AND Course Sem == Student Sem
+      const { data, error } = await supabase
+        .from('timetable')
+        .select(`
+          *,
+          classes!inner (
+            id,
+            room,
+            section,
+            courses!inner (name, code, department, semester),
+            profiles:teacher_id (full_name)
+          )
+        `)
+        .eq('classes.section', profile.section)
+        .eq('classes.courses.department', profile.department)
+        .eq('classes.courses.semester', semNum)
+        .order('day_of_week')
+        .order('start_time');
+
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!studentId,
+  });
+}
+
+export function useStudentAssignments(studentId: string) {
+  return useQuery({
+    queryKey: ['assignments', 'student', studentId],
+    queryFn: async () => {
+      // 1. Get student profile details
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('department, semester, section')
+        .eq('id', studentId)
+        .single();
+
+      if (profileError || !profile) return [];
+
+      const semNum = getSemesterNumber(profile.semester);
+
+      // 2. Get assignments for classes matching student attributes
+      const { data, error } = await supabase
+        .from('assignments')
+        .select(`
+           *,
+           classes!inner (
+             id,
+             section,
+             courses!inner (name, code, department, semester)
+           )
+        `)
+        .eq('classes.section', profile.section)
+        .eq('classes.courses.department', profile.department)
+        .eq('classes.courses.semester', semNum)
+        .order('due_date');
+
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!studentId,
+  });
+}
+
+export function useTeacherClasses(teacherId: string) {
+  return useQuery({
+    queryKey: ['classes', 'teacher', teacherId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('classes')
+        .select(`
+          *,
+          courses(name, code),
+          enrollments(count)
+        `)
+        .eq('teacher_id', teacherId);
+
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!teacherId,
   });
 }
 
@@ -620,11 +799,20 @@ export interface Profile {
   department: string | null;
   subject: string | null;
   semester: string | null;
+  section: string | null;
+  academic_year: string | null;
   regulation: string | null;
   roll_number: string | null;
   phone: string | null;
   avatar_url: string | null;
   created_at: string;
+  // New verification fields
+  verification_status?: 'pending' | 'verified' | 'failed';
+  verification_note?: string | null;
+  onboarding_complete?: boolean;
+  claimed_roll_number?: string | null;
+  verified_at?: string | null;
+  year?: number | null;
 }
 
 export function useProfiles() {
@@ -722,6 +910,8 @@ export function useCreateUser() {
       semester?: string;
       regulation?: string;
       phone?: string;
+      year?: number;
+      section?: string;
     }) => {
       // Call the edge function to create user with auth
       const { data, error } = await supabase.functions.invoke('create-user', {
@@ -735,6 +925,8 @@ export function useCreateUser() {
           semester: user.semester || null,
           regulation: user.regulation || null,
           phone: user.phone || null,
+          year: user.year || null,
+          section: user.section || null,
         },
       });
 

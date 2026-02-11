@@ -37,7 +37,17 @@ export const LABS = ['Lab 1', 'Lab 2', 'Lab 3', 'Lab 4'];
 export const LIGHT_DAYS: DayOfWeek[] = ['Friday', 'Saturday'];
 
 // Core/heavy subjects should be scheduled in morning
-export const CORE_SUBJECT_KEYWORDS = ['Data Structures', 'Algorithms', 'Database', 'Operating Systems', 'Computer Networks', 'Machine Learning', 'Artificial Intelligence'];
+// Core/heavy subjects should be scheduled in morning
+export const CORE_SUBJECT_KEYWORDS = [
+  // CSE / IT
+  'Data Structures', 'Algorithms', 'Database', 'Operating Systems', 'Computer Networks', 'Machine Learning', 'Artificial Intelligence', 'Compiler Design', 'Theory of Computation',
+  // ECE / EEE
+  'Circuit', 'Signal', 'Control Systems', 'Digital Electronics', 'Analog', 'Communication Systems', 'Power Systems', 'Machines', 'Electromagnetic', 'Microprocessor', 'VLSI',
+  // MECH / CIVIL
+  'Thermodynamics', 'Mechanics', 'Fluid', 'Structural', 'Strength of Materials', 'Manufacturing', 'Kinematics', 'Dynamics', 'Heat Transfer', 'Hydraulics', 'Surveying',
+  // MATH
+  'Mathematics', 'Calculus', 'Probability', 'Statistics', 'Algebra', 'Geometry'
+];
 
 export interface ClassData {
   id: string;
@@ -121,9 +131,9 @@ class FacultyScheduleTracker {
   }
 
   canAssign(
-    teacherId: string, 
-    day: DayOfWeek, 
-    slotIndices: number[], 
+    teacherId: string,
+    day: DayOfWeek,
+    slotIndices: number[],
     isLab: boolean,
     constraints: ScheduleConstraints
   ): boolean {
@@ -168,37 +178,37 @@ class FacultyScheduleTracker {
   }
 
   private canAddWithoutExceedingContinuous(
-    teacherId: string, 
-    day: DayOfWeek, 
-    slotIndex: number, 
+    teacherId: string,
+    day: DayOfWeek,
+    slotIndex: number,
     maxContinuous: number
   ): boolean {
     const daySchedule = this.getDaySchedule(teacherId, day);
-    
+
     // Count continuous slots including this one
     let count = 1;
-    
+
     // Check before
     let checkIdx = slotIndex - 1;
     while (checkIdx >= 0 && daySchedule.has(checkIdx) && checkIdx !== 4) { // 4 is lunch
       count++;
       checkIdx--;
     }
-    
+
     // Check after
     checkIdx = slotIndex + 1;
     while (checkIdx < TIME_SLOTS.length && daySchedule.has(checkIdx) && checkIdx !== 4) {
       count++;
       checkIdx++;
     }
-    
+
     return count <= maxContinuous;
   }
 
   assignSlot(teacherId: string, day: DayOfWeek, slotIndices: number[], isLab: boolean): void {
     const daySchedule = this.getDaySchedule(teacherId, day);
     slotIndices.forEach(idx => daySchedule.add(idx));
-    
+
     if (!isLab) {
       if (!this.theoryCountPerDay.has(teacherId)) {
         this.theoryCountPerDay.set(teacherId, new Map());
@@ -229,7 +239,7 @@ class FacultyScheduleTracker {
   getDayWithLeastLoad(teacherId: string, excludeDays: DayOfWeek[] = []): DayOfWeek {
     let minLoad = Infinity;
     let bestDay: DayOfWeek = 'Monday';
-    
+
     for (const day of DAYS) {
       if (excludeDays.includes(day)) continue;
       const load = this.getFacultyPeriodsPerDay(teacherId, day);
@@ -238,7 +248,7 @@ class FacultyScheduleTracker {
         bestDay = day;
       }
     }
-    
+
     return bestDay;
   }
 
@@ -261,7 +271,7 @@ class RoomScheduleTracker {
     if (!this.schedules.has(room)) return true;
     const roomSchedule = this.schedules.get(room)!;
     if (!roomSchedule.has(day)) return true;
-    
+
     const daySchedule = roomSchedule.get(day)!;
     return !slotIndices.some(idx => daySchedule.has(idx));
   }
@@ -351,10 +361,10 @@ class SlotTracker {
 
   getAvailableSlots(day: DayOfWeek, session?: 'morning' | 'afternoon'): number[] {
     const available: number[] = [];
-    const slots = session 
+    const slots = session
       ? TIME_SLOTS.filter(s => s.session === session)
       : CLASS_SLOTS;
-    
+
     for (const slot of slots) {
       if (this.isAvailable(day, slot.index)) {
         available.push(slot.index);
@@ -366,7 +376,7 @@ class SlotTracker {
   // Find consecutive available slots for labs
   getConsecutiveSlots(day: DayOfWeek, count: number, preferAfternoon: boolean = true): number[][] {
     const pairs: number[][] = [];
-    
+
     // Afternoon pairs (preferred for labs)
     if (preferAfternoon) {
       const afternoonPairs = [[5, 6], [6, 7]];
@@ -376,7 +386,7 @@ class SlotTracker {
         }
       }
     }
-    
+
     // Morning pairs (not crossing lunch)
     const morningPairs = [[0, 1], [1, 2], [2, 3]];
     for (const pair of morningPairs) {
@@ -384,7 +394,7 @@ class SlotTracker {
         pairs.push(pair);
       }
     }
-    
+
     // If afternoon not preferred, add them at the end
     if (!preferAfternoon) {
       const afternoonPairs = [[5, 6], [6, 7]];
@@ -394,7 +404,7 @@ class SlotTracker {
         }
       }
     }
-    
+
     return pairs;
   }
 }
@@ -408,14 +418,18 @@ export function getAbbreviation(name?: string): string {
 }
 
 export function isCoreSubject(courseName: string): boolean {
-  return CORE_SUBJECT_KEYWORDS.some(keyword => 
+  return CORE_SUBJECT_KEYWORDS.some(keyword =>
     courseName.toLowerCase().includes(keyword.toLowerCase())
   );
 }
 
 export function isLightSubject(courseName: string): boolean {
-  const lightKeywords = ['seminar', 'soft skills', 'mini project', 'project work', 'internship'];
-  return lightKeywords.some(keyword => 
+  const lightKeywords = [
+    'seminar', 'soft skills', 'mini project', 'project work', 'internship',
+    'logic', 'ethics', 'constitution', 'environmental', 'evs', 'english',
+    'communication', 'management', 'economics', 'finance', 'entrepreneurship'
+  ];
+  return lightKeywords.some(keyword =>
     courseName.toLowerCase().includes(keyword.toLowerCase())
   );
 }
@@ -438,24 +452,24 @@ export function generateOptimizedTimetable(
 ): { schedule: GeneratedSlot[]; facultyWorkloads: FacultyWorkload[]; justification: string[] } {
   const schedule: GeneratedSlot[] = [];
   const justification: string[] = [];
-  
+
   const slotTracker = new SlotTracker();
   const facultyTracker = new FacultyScheduleTracker();
   const roomTracker = new RoomScheduleTracker();
   const subjectTracker = new SubjectScheduleTracker(); // Track subject periods per day
-  
+
   // Mark existing slots
   slotTracker.markExistingSchedule(existingTimetable);
-  
+
   // Separate labs and theory classes
   const labs = selectedClasses.filter(c => c.isLab);
   const theory = selectedClasses.filter(c => !c.isLab);
-  
+
   // Further categorize theory
   const coreTheory = theory.filter(c => isCoreSubject(c.classData.courses?.name || ''));
   const lightTheory = theory.filter(c => isLightSubject(c.classData.courses?.name || ''));
-  const regularTheory = theory.filter(c => 
-    !isCoreSubject(c.classData.courses?.name || '') && 
+  const regularTheory = theory.filter(c =>
+    !isCoreSubject(c.classData.courses?.name || '') &&
     !isLightSubject(c.classData.courses?.name || '')
   );
 
@@ -470,35 +484,35 @@ export function generateOptimizedTimetable(
     const courseCode = `${lab.classData.courses?.code || '---'}-LAB`;
     const facultyName = lab.classData.profiles?.full_name || 'TBA';
     let assignedCount = 0;
-    
+
     // Shuffle days for fair distribution
     const shuffledDays = shuffle([...DAYS]);
-    
+
     for (const day of shuffledDays) {
       if (assignedCount >= lab.classesPerWeek) break;
-      
+
       // Get consecutive slots (prefer afternoon)
       const consecutivePairs = slotTracker.getConsecutiveSlots(day, 2, constraints.preferLabsInAfternoon);
-      
+
       for (const pair of consecutivePairs) {
         if (assignedCount >= lab.classesPerWeek) break;
-        
+
         // Check faculty availability
         if (!facultyTracker.canAssign(teacherId, day, pair, true, constraints)) continue;
-        
+
         // Check subject-per-day constraint (labs count as 2 periods)
         if (!subjectTracker.canAssign(lab.id, day, 2, constraints.maxPeriodsPerSubjectPerDay)) continue;
-        
+
         // Find available lab room
         const room = roomTracker.getAvailableRoom(LABS, day, pair);
         if (!room) continue;
-        
+
         // Assign the lab
         slotTracker.markUsed(day, pair);
         facultyTracker.assignSlot(teacherId, day, pair, true);
         roomTracker.assignSlot(room, day, pair);
         subjectTracker.assignPeriods(lab.id, day, 2); // Track lab periods
-        
+
         schedule.push({
           class_id: lab.id,
           teacher_id: teacherId,
@@ -513,12 +527,12 @@ export function generateOptimizedTimetable(
           isLab: true,
           slotIndices: pair,
         });
-        
+
         assignedCount++;
         break;
       }
     }
-    
+
     if (assignedCount < lab.classesPerWeek) {
       justification.push(`⚠️ Could only assign ${assignedCount}/${lab.classesPerWeek} sessions for ${courseName}`);
     }
@@ -528,8 +542,8 @@ export function generateOptimizedTimetable(
 
   // Helper to schedule a theory class
   const scheduleTheoryClass = (
-    classItem: SelectedClass, 
-    preferredDays: DayOfWeek[], 
+    classItem: SelectedClass,
+    preferredDays: DayOfWeek[],
     preferMorning: boolean
   ) => {
     const teacherId = classItem.classData.teacher_id;
@@ -537,34 +551,34 @@ export function generateOptimizedTimetable(
     const courseCode = classItem.classData.courses?.code || '---';
     const facultyName = classItem.classData.profiles?.full_name || 'TBA';
     let assignedCount = 0;
-    
+
     // Days ordered by preference, then shuffled within preference groups
-    const orderedDays = preferredDays.length > 0 
+    const orderedDays = preferredDays.length > 0
       ? [...preferredDays, ...DAYS.filter(d => !preferredDays.includes(d))]
       : shuffle([...DAYS]);
-    
+
     // For even distribution, sort by faculty's current load
     const daysByLoad = orderedDays.sort((a, b) => {
       if (constraints.distributeWorkloadEvenly) {
-        return facultyTracker.getFacultyPeriodsPerDay(teacherId, a) - 
-               facultyTracker.getFacultyPeriodsPerDay(teacherId, b);
+        return facultyTracker.getFacultyPeriodsPerDay(teacherId, a) -
+          facultyTracker.getFacultyPeriodsPerDay(teacherId, b);
       }
       return 0;
     });
-    
+
     for (const day of daysByLoad) {
       if (assignedCount >= classItem.classesPerWeek) break;
-      
+
       // Check faculty constraints
       if (facultyTracker.getFreePeriods(teacherId, day) < constraints.minFreePeriodPerFacultyPerDay + 1) {
         continue; // Need at least one free period after this assignment
       }
-      
+
       // Check subject-per-day constraint before trying this day
       if (!subjectTracker.canAssign(classItem.id, day, 1, constraints.maxPeriodsPerSubjectPerDay)) {
         continue; // Already at max periods for this subject today
       }
-      
+
       // Get available slots (prefer morning for core subjects)
       let availableSlots: number[];
       if (preferMorning && constraints.coreSubjectsInMorning) {
@@ -575,40 +589,40 @@ export function generateOptimizedTimetable(
       } else {
         availableSlots = slotTracker.getAvailableSlots(day);
       }
-      
+
       // Avoid slots adjacent to labs if constraint is set
       if (constraints.avoidTheoryAroundLabs) {
         const labSlots = schedule
           .filter(s => s.isLab && s.day_of_week === day && s.teacher_id === teacherId)
           .flatMap(s => s.slotIndices);
-        
+
         availableSlots = availableSlots.filter(idx => {
-          const isAdjacentToLab = labSlots.some(labIdx => 
+          const isAdjacentToLab = labSlots.some(labIdx =>
             Math.abs(idx - labIdx) === 1 || idx === labIdx
           );
           return !isAdjacentToLab;
         });
       }
-      
+
       for (const slotIdx of availableSlots) {
         if (assignedCount >= classItem.classesPerWeek) break;
-        
+
         // Re-check subject constraint (in case we already assigned one this day in this loop)
         if (!subjectTracker.canAssign(classItem.id, day, 1, constraints.maxPeriodsPerSubjectPerDay)) break;
-        
+
         // Check faculty can take this slot
         if (!facultyTracker.canAssign(teacherId, day, [slotIdx], false, constraints)) continue;
-        
+
         // Find available room
         const room = roomTracker.getAvailableRoom(ROOMS, day, [slotIdx]);
         if (!room) continue;
-        
+
         // Assign
         slotTracker.markUsed(day, [slotIdx]);
         facultyTracker.assignSlot(teacherId, day, [slotIdx], false);
         roomTracker.assignSlot(room, day, [slotIdx]);
         subjectTracker.assignPeriods(classItem.id, day, 1); // Track subject period
-        
+
         schedule.push({
           class_id: classItem.id,
           teacher_id: teacherId,
@@ -623,11 +637,11 @@ export function generateOptimizedTimetable(
           isLab: false,
           slotIndices: [slotIdx],
         });
-        
+
         assignedCount++;
       }
     }
-    
+
     return assignedCount >= classItem.classesPerWeek;
   };
 
@@ -658,7 +672,7 @@ export function generateOptimizedTimetable(
 
   // Build faculty workloads
   const facultyMap = new Map<string, FacultyWorkload>();
-  
+
   for (const slot of schedule) {
     if (!facultyMap.has(slot.teacher_id)) {
       facultyMap.set(slot.teacher_id, {
@@ -671,17 +685,17 @@ export function generateOptimizedTimetable(
         daySchedule: new Map(),
       });
     }
-    
+
     const workload = facultyMap.get(slot.teacher_id)!;
     const periodCount = slot.slotIndices.length;
-    
+
     // Update periods per day
     const currentDayPeriods = workload.periodsPerDay.get(slot.day_of_week) || 0;
     workload.periodsPerDay.set(slot.day_of_week, currentDayPeriods + periodCount);
-    
+
     // Update totals
     workload.totalPeriods += periodCount;
-    
+
     // Morning vs afternoon
     const isMorning = slot.slotIndices.some(idx => idx <= 3);
     if (isMorning) {
@@ -689,7 +703,7 @@ export function generateOptimizedTimetable(
     } else {
       workload.afternoonPeriods += periodCount;
     }
-    
+
     // Add to day schedule
     if (!workload.daySchedule.has(slot.day_of_week)) {
       workload.daySchedule.set(slot.day_of_week, []);

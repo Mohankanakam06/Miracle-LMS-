@@ -42,7 +42,17 @@ import { generateFacultyTimetablePdf, generateAllFacultyTimetablesPdf } from '@/
 import AddSlotDialog from './AddSlotDialog';
 import EditSlotDialog from './EditSlotDialog';
 
-export default function TimetableGenerator() {
+interface TimetableGeneratorProps {
+    selectedDepartment?: string;
+    selectedSemester?: string;
+    selectedSection?: string;
+}
+
+export default function TimetableGenerator({
+    selectedDepartment,
+    selectedSemester,
+    selectedSection
+}: TimetableGeneratorProps) {
     const { data: classes, isLoading: classesLoading } = useClasses();
     const { data: existingTimetable, isLoading: timetableLoading } = useTimetable();
     const queryClient = useQueryClient();
@@ -60,14 +70,36 @@ export default function TimetableGenerator() {
     const [addDialogDefaultDay, setAddDialogDefaultDay] = useState<DayOfWeek>('Monday');
     const [addDialogDefaultSlot, setAddDialogDefaultSlot] = useState<number>(0);
 
+    // Filtered classes for the sidebar
+    const filteredClasses = classes?.filter(c => {
+        if (!selectedDepartment && !selectedSemester && !selectedSection) return true;
+
+        // Filter by Department
+        if (selectedDepartment && c.courses?.department !== selectedDepartment) return false;
+
+        // Filter by Section
+        if (selectedSection && c.section !== selectedSection) return false;
+
+        // Filter by Semester
+        if (selectedSemester && c.courses?.semester) {
+            const [yearStr, semStr] = selectedSemester.split('-');
+            const year = parseInt(yearStr);
+            const sem = parseInt(semStr);
+            const targetSem = (year - 1) * 2 + sem;
+            if (c.courses.semester !== targetSem) return false;
+        }
+
+        return true;
+    });
+
     // Initialize selected classes from existing ones
     useMemo(() => {
-        if (classes && selectedClasses.length === 0) {
+        if (filteredClasses && selectedClasses.length === 0) {
             // By default, select all classes for the current semester/year context if we were filtering
             // For now, let's just picking the first 10 to clear the UI or let user select
             // Actually, we should let user select manually or "Select All"
         }
-    }, [classes]);
+    }, [filteredClasses]);
 
     const toggleClass = (classId: string, isLab: boolean = false) => {
         setSelectedClasses(prev => {
@@ -253,14 +285,14 @@ export default function TimetableGenerator() {
                                 Select Subjects
                             </CardTitle>
                             <CardDescription>
-                                Choose subjects to schedule
+                                {selectedDepartment} {selectedSemester} Sec {selectedSection}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-y-auto pt-4 space-y-2">
-                            {classes?.length === 0 ? (
-                                <p className="text-center text-muted-foreground py-4">No classes found.</p>
+                            {filteredClasses?.length === 0 ? (
+                                <p className="text-center text-muted-foreground py-4">No classes found for this filter.</p>
                             ) : (
-                                classes?.map(cls => {
+                                filteredClasses?.map(cls => {
                                     const isSelected = selectedClasses.some(c => c.id === cls.id && !c.isLab);
                                     const isLabSelected = selectedClasses.some(c => c.id === cls.id && c.isLab);
                                     return (
@@ -340,78 +372,56 @@ export default function TimetableGenerator() {
 
                             <TabsContent value="grid" className="space-y-4">
                                 <Card className="shadow-card border-2 border-primary/10">
-                                    <CardContent className="p-0 overflow-x-auto">
-                                        <div className="min-w-[800px]">
-                                            <table className="w-full border-collapse text-sm">
-                                                <thead>
-                                                    <tr className="bg-muted/50 text-left">
-                                                        <th className="p-3 border font-semibold w-24 bg-muted text-center">Day / Time</th>
-                                                        {TIME_SLOTS.map((slot, idx) => (
-                                                            <th key={idx} className={cn(
-                                                                "p-2 border font-semibold text-center min-w-[100px]",
-                                                                slot.isLunch && "bg-amber-50"
-                                                            )}>
-                                                                <div className="text-xs text-muted-foreground mb-1">
-                                                                    {slot.start} - {slot.end}
-                                                                </div>
-                                                                {slot.isLunch ? "LUNCH" : slot.label}
-                                                            </th>
-                                                        ))}
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {DAYS.map(day => (
-                                                        <tr key={day}>
-                                                            <td className="p-3 border font-medium bg-muted/30 text-center">{day}</td>
-                                                            {TIME_SLOTS.map((slot, slotIdx) => {
-                                                                if (slot.isLunch) {
-                                                                    return <td key={slotIdx} className="p-2 border bg-amber-50/50 text-center text-amber-300">☕</td>;
-                                                                }
+                                    <CardContent className="p-0">
+                                        <div className="overflow-x-auto pb-4">
+                                            <div className="min-w-[800px]">
+                                                <table className="w-full border-collapse text-sm">
+                                                    <thead>
+                                                        <tr className="bg-muted/50 text-left">
+                                                            <th className="p-3 border font-semibold w-24 bg-muted text-center">Day / Time</th>
+                                                            {TIME_SLOTS.map((slot, idx) => (
+                                                                <th key={idx} className={cn(
+                                                                    "p-2 border font-semibold text-center min-w-[100px]",
+                                                                    slot.isLunch && "bg-amber-50"
+                                                                )}>
+                                                                    <div className="text-xs text-muted-foreground mb-1">
+                                                                        {slot.start} - {slot.end}
+                                                                    </div>
+                                                                    {slot.isLunch ? "LUNCH" : slot.label}
+                                                                </th>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {DAYS.map(day => (
+                                                            <tr key={day}>
+                                                                <td className="p-3 border font-medium bg-muted/30 text-center">{day}</td>
+                                                                {TIME_SLOTS.map((slot, slotIdx) => {
+                                                                    if (slot.isLunch) {
+                                                                        return <td key={slotIdx} className="p-2 border bg-amber-50/50 text-center text-amber-300">☕</td>;
+                                                                    }
 
-                                                                const scheduledSlot = getSlotForCell(day, slot.index);
-                                                                const isCellStart = scheduledSlot && scheduledSlot.start_time === slot.start;
+                                                                    const scheduledSlot = getSlotForCell(day, slot.index);
+                                                                    const isCellStart = scheduledSlot && scheduledSlot.start_time === slot.start;
 
-                                                                // If this slot is part of a lab spanning multiple periods, only render on start
-                                                                if (scheduledSlot && scheduledSlot.isLab && !isCellStart) {
-                                                                    return null; // Don't render cell, handled by rowspan/colspan logic or just skipped if we use simple grid
-                                                                    // Simpler approach: check if this index is in slotIndices. If it's not the first one, skip rendering? 
-                                                                    // Wait, HTML table logic needs valid cells.
-                                                                    // Let's just render usually, but maybe span?
-                                                                }
+                                                                    // If this slot is part of a lab spanning multiple periods, only render on start
+                                                                    if (scheduledSlot && scheduledSlot.isLab && !isCellStart) {
+                                                                        return null; // Don't render cell, handled by rowspan/colspan logic or just skipped if we use simple grid
+                                                                        // Simpler approach: check if this index is in slotIndices. If it's not the first one, skip rendering? 
+                                                                        // Wait, HTML table logic needs valid cells.
+                                                                        // Let's just render usually, but maybe span?
+                                                                    }
 
-                                                                // Actually, with simple grid, we can just render. The 'getSlotForCell' works.
-                                                                // But for Lab spanning 2 cols:
-                                                                if (scheduledSlot && scheduledSlot.isLab && scheduledSlot.slotIndices[0] === slot.index) {
-                                                                    return (
-                                                                        <td key={slotIdx} colSpan={2} className="p-1 border bg-purple-50 hover:bg-purple-100 transition-colors relative group">
-                                                                            <div className="h-full w-full p-2 flex flex-col items-center justify-center text-center gap-1">
-                                                                                <Badge variant="secondary" className="bg-purple-200 text-purple-800 border-purple-300 mb-1">LAB</Badge>
-                                                                                <span className="font-bold text-xs">{scheduledSlot.courseCode}</span>
-                                                                                <span className="text-[10px] text-muted-foreground line-clamp-1">{scheduledSlot.facultyName}</span>
-                                                                            </div>
-                                                                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white/80 rounded shadow-sm p-0.5">
-                                                                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setEditingSlot(scheduledSlot)}>
-                                                                                    <Pencil className="h-3 w-3" />
-                                                                                </Button>
-                                                                                <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => removeSlot(generatedSchedule.indexOf(scheduledSlot))}>
-                                                                                    <Trash2 className="h-3 w-3" />
-                                                                                </Button>
-                                                                            </div>
-                                                                        </td>
-                                                                    )
-                                                                }
-                                                                if (scheduledSlot && scheduledSlot.isLab) {
-                                                                    return null; // Skip 2nd cell of lab
-                                                                }
-
-                                                                return (
-                                                                    <td key={slotIdx} className="p-1 border hover:bg-accent/10 transition-colors relative group h-20">
-                                                                        {scheduledSlot ? (
-                                                                            <div className="h-full w-full p-1 flex flex-col items-center justify-center text-center">
-                                                                                <span className="font-bold text-xs mb-1 text-primary">{scheduledSlot.courseCode}</span>
-                                                                                <span className="text-[10px] text-muted-foreground line-clamp-2">{scheduledSlot.courseName}</span>
-                                                                                <span className="text-[10px] font-medium text-muted-foreground mt-1">{scheduledSlot.facultyName.split(' ')[0]}</span>
-
+                                                                    // Actually, with simple grid, we can just render. The 'getSlotForCell' works.
+                                                                    // But for Lab spanning 2 cols:
+                                                                    if (scheduledSlot && scheduledSlot.isLab && scheduledSlot.slotIndices[0] === slot.index) {
+                                                                        return (
+                                                                            <td key={slotIdx} colSpan={2} className="p-1 border bg-purple-50 hover:bg-purple-100 transition-colors relative group">
+                                                                                <div className="h-full w-full p-2 flex flex-col items-center justify-center text-center gap-1">
+                                                                                    <Badge variant="secondary" className="bg-purple-200 text-purple-800 border-purple-300 mb-1">LAB</Badge>
+                                                                                    <span className="font-bold text-xs">{scheduledSlot.courseCode}</span>
+                                                                                    <span className="text-[10px] text-muted-foreground line-clamp-1">{scheduledSlot.facultyName}</span>
+                                                                                </div>
                                                                                 <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white/80 rounded shadow-sm p-0.5">
                                                                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setEditingSlot(scheduledSlot)}>
                                                                                         <Pencil className="h-3 w-3" />
@@ -420,26 +430,50 @@ export default function TimetableGenerator() {
                                                                                         <Trash2 className="h-3 w-3" />
                                                                                     </Button>
                                                                                 </div>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div
-                                                                                className="h-full w-full flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer"
-                                                                                onClick={() => {
-                                                                                    setAddDialogDefaultDay(day);
-                                                                                    setAddDialogDefaultSlot(slot.index);
-                                                                                    setIsAddDialogOpen(true);
-                                                                                }}
-                                                                            >
-                                                                                <Plus className="h-4 w-4 text-muted-foreground" />
-                                                                            </div>
-                                                                        )}
-                                                                    </td>
-                                                                );
-                                                            })}
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                                                            </td>
+                                                                        )
+                                                                    }
+                                                                    if (scheduledSlot && scheduledSlot.isLab) {
+                                                                        return null; // Skip 2nd cell of lab
+                                                                    }
+
+                                                                    return (
+                                                                        <td key={slotIdx} className="p-1 border hover:bg-accent/10 transition-colors relative group h-20">
+                                                                            {scheduledSlot ? (
+                                                                                <div className="h-full w-full p-1 flex flex-col items-center justify-center text-center">
+                                                                                    <span className="font-bold text-xs mb-1 text-primary">{scheduledSlot.courseCode}</span>
+                                                                                    <span className="text-[10px] text-muted-foreground line-clamp-2">{scheduledSlot.courseName}</span>
+                                                                                    <span className="text-[10px] font-medium text-muted-foreground mt-1">{scheduledSlot.facultyName.split(' ')[0]}</span>
+
+                                                                                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white/80 rounded shadow-sm p-0.5">
+                                                                                        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setEditingSlot(scheduledSlot)}>
+                                                                                            <Pencil className="h-3 w-3" />
+                                                                                        </Button>
+                                                                                        <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => removeSlot(generatedSchedule.indexOf(scheduledSlot))}>
+                                                                                            <Trash2 className="h-3 w-3" />
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div
+                                                                                    className="h-full w-full flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer"
+                                                                                    onClick={() => {
+                                                                                        setAddDialogDefaultDay(day);
+                                                                                        setAddDialogDefaultSlot(slot.index);
+                                                                                        setIsAddDialogOpen(true);
+                                                                                    }}
+                                                                                >
+                                                                                    <Plus className="h-4 w-4 text-muted-foreground" />
+                                                                                </div>
+                                                                            )}
+                                                                        </td>
+                                                                    );
+                                                                })}
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -447,7 +481,7 @@ export default function TimetableGenerator() {
                                 {/* Detailed List */}
                                 <div>
                                     <h4 className="font-semibold mb-3">Detailed List:</h4>
-                                    <div className="overflow-x-auto">
+                                    <div className="overflow-x-auto pb-4">
                                         <table className="w-full min-w-[700px]">
                                             <thead>
                                                 <tr className="border-b">

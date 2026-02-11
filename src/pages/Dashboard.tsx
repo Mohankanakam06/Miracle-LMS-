@@ -1,5 +1,17 @@
 import { useAuth } from '@/hooks/useAuth';
-import { useAttendance, useAssignments, useSubmissions, useNotifications, useFees, useTimetable, useMaterials, useCourses, useProfiles } from '@/hooks/useLMS';
+import {
+  useAttendance,
+  useAssignments,
+  useStudentAssignments, // Added
+  useSubmissions,
+  useNotifications,
+  useFees,
+  useTimetable,
+  useStudentTimetable, // Added
+  useMaterials,
+  useCourses,
+  useProfiles
+} from '@/hooks/useLMS';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import WelcomeCard from '@/components/dashboard/WelcomeCard';
 import StatsGrid from '@/components/dashboard/StatsGrid';
@@ -30,6 +42,10 @@ import {
   MessageSquare,
   DollarSign,
   Activity,
+  Shield,
+  CheckCircle,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CreatePeriodDialog from '@/components/classes/CreatePeriodDialog';
@@ -40,11 +56,12 @@ function StudentDashboard() {
   const { user } = useAuth();
   const { data: profiles } = useProfiles();
   const { data: attendance, isLoading: attendanceLoading } = useAttendance(user?.id);
-  const { data: assignments, isLoading: assignmentsLoading } = useAssignments();
+  // Use new student-specific hooks
+  const { data: assignments, isLoading: assignmentsLoading } = useStudentAssignments(user?.id || '');
   const { data: submissions } = useSubmissions(user?.id);
   const { data: notifications } = useNotifications(user?.id);
   const { data: fees } = useFees(user?.id);
-  const { data: timetable } = useTimetable(user?.id);
+  const { data: timetable } = useStudentTimetable(user?.id || '');
 
   // Get current user profile
   const currentProfile = profiles?.find(p => p.id === user?.id);
@@ -120,7 +137,7 @@ function StudentDashboard() {
   }));
 
   return (
-    <div className="space-y-6 stagger-fade-in">
+    <div className="space-y-4 md:space-y-6">
       {/* Welcome Card */}
       <WelcomeCard
         userName={currentProfile?.full_name || user?.email?.split('@')[0] || 'Student'}
@@ -130,50 +147,70 @@ function StudentDashboard() {
         avatarUrl={currentProfile?.avatar_url}
       />
 
-      {/* Stats Grid */}
-      <StatsGrid stats={[
-        {
-          title: 'Attendance',
-          value: `${attendancePercentage}%`,
-          icon: <CheckSquare className="h-6 w-6" />,
-          variant: attendancePercentage >= 75 ? 'success' : 'warning',
-          description: `${presentClasses}/${totalClasses} classes`,
-        },
-        {
-          title: 'Assignments Due',
-          value: pendingAssignments.length,
-          icon: <ClipboardList className="h-6 w-6" />,
-          variant: pendingAssignments.length > 0 ? 'warning' : 'success',
-          description: pendingAssignments.length > 0 ? 'Pending submission' : 'All submitted',
-        },
-        {
-          title: 'Notifications',
-          value: unreadNotifications,
-          icon: <Bell className="h-6 w-6" />,
-          variant: 'info',
-          description: 'Unread messages',
-        },
-        {
-          title: 'Fee Pending',
-          value: pendingFees > 0 ? `₹${pendingFees.toLocaleString()}` : '₹0',
-          icon: <DollarSign className="h-6 w-6" />,
-          variant: pendingFees > 0 ? 'destructive' : 'success',
-          description: pendingFees > 0 ? 'Due soon' : 'All paid',
-        },
-      ]} />
-
-      {/* Charts Row */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <AttendanceChart
-          present={presentClasses}
-          absent={absentClasses}
-          late={lateClasses}
-        />
-        <GradesChart data={gradesData} />
+      {/* Mobile-First Stats Grid */}
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        <StatsGrid stats={[
+          {
+            title: 'Attendance',
+            value: `${attendancePercentage}%`,
+            icon: <CheckSquare className="h-5 w-5 sm:h-6 sm:w-6" />,
+            variant: attendancePercentage >= 75 ? 'success' : 'warning',
+            description: `${presentClasses}/${totalClasses} classes`,
+            compact: true,
+          },
+          {
+            title: 'Assignments',
+            value: pendingAssignments.length,
+            icon: <ClipboardList className="h-5 w-5 sm:h-6 sm:w-6" />,
+            variant: pendingAssignments.length > 0 ? 'warning' : 'success',
+            description: pendingAssignments.length > 0 ? 'Due soon' : 'All done',
+            compact: true,
+          },
+          {
+            title: 'Notifications',
+            value: unreadNotifications,
+            icon: <Bell className="h-5 w-5 sm:h-6 sm:w-6" />,
+            variant: 'info',
+            description: 'Unread',
+            compact: true,
+          },
+          {
+            title: 'Fees',
+            value: pendingFees > 0 ? `₹${pendingFees.toLocaleString()}` : '₹0',
+            icon: <DollarSign className="h-5 w-5 sm:h-6 sm:w-6" />,
+            variant: pendingFees > 0 ? 'destructive' : 'success',
+            description: pendingFees > 0 ? 'Pending' : 'Clear',
+            compact: true,
+          },
+        ]} />
       </div>
 
-      {/* Schedule and Assignments */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/* Mobile-First Charts */}
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold">Attendance Overview</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <AttendanceChart
+              present={presentClasses}
+              absent={absentClasses}
+              late={lateClasses}
+            />
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold">Recent Grades</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <GradesChart data={gradesData} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Schedule and Quick Actions */}
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <UpcomingSchedule
             title="Today's Schedule"
@@ -222,16 +259,12 @@ function TeacherDashboard() {
   }
 
   return (
-    <div className="space-y-6 stagger-fade-in">
+    <div className="space-y-6">
       {/* Welcome Card */}
       <WelcomeCard
         userName={user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Faculty'}
         role="teacher"
       />
-
-
-
-
 
       {/* Stats Grid */}
       <StatsGrid stats={[
@@ -275,12 +308,10 @@ function TeacherDashboard() {
           ]}
         />
 
-        <Card className="shadow-lg border-0 bg-gradient-to-br from-card to-muted/30">
+        <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="font-display text-lg flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <ClipboardList className="h-5 w-5 text-primary" />
-              </div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-primary" />
               Recent Assignments
             </CardTitle>
           </CardHeader>
@@ -293,7 +324,7 @@ function TeacherDashboard() {
             ) : (
               <div className="space-y-3">
                 {assignments?.slice(0, 4).map((assignment) => (
-                  <div key={assignment.id} className="p-4 rounded-xl border hover:shadow-md transition-all">
+                  <div key={assignment.id} className="p-4 rounded-lg border hover:bg-accent/50 transition-colors">
                     <div className="flex items-start justify-between">
                       <div>
                         <h4 className="font-semibold text-sm">{assignment.title}</h4>
@@ -336,7 +367,7 @@ function AdminDashboard() {
   const totalScheduledClasses = timetable?.length || 0;
 
   return (
-    <div className="space-y-6 stagger-fade-in">
+    <div className="space-y-6">
       {/* Welcome Card */}
       <WelcomeCard
         userName={user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Admin'}
@@ -384,20 +415,18 @@ function AdminDashboard() {
           ]}
         />
 
-        <Card className="lg:col-span-2 shadow-lg border-0 bg-gradient-to-br from-card to-muted/30">
+        <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
-            <CardTitle className="font-display text-lg flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-info/10">
-                <Activity className="h-5 w-5 text-info" />
-              </div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
               System Overview
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
+                  <div className="p-2 rounded-md bg-primary/10">
                     <GraduationCap className="h-5 w-5 text-primary" />
                   </div>
                   <div>
@@ -406,10 +435,10 @@ function AdminDashboard() {
                   </div>
                 </div>
               </div>
-              <div className="p-4 rounded-xl bg-success/5 border border-success/10">
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-success/10">
-                    <BookOpen className="h-5 w-5 text-success" />
+                  <div className="p-2 rounded-md bg-green-500/20">
+                    <BookOpen className="h-5 w-5 text-green-700" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold">{teacherCount}</p>
@@ -417,10 +446,10 @@ function AdminDashboard() {
                   </div>
                 </div>
               </div>
-              <div className="p-4 rounded-xl bg-info/5 border border-info/10">
+              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-info/10">
-                    <BookOpen className="h-5 w-5 text-info" />
+                  <div className="p-2 rounded-md bg-blue-500/20">
+                    <BookOpen className="h-5 w-5 text-blue-700" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold">{courses?.length || 0}</p>
@@ -434,13 +463,11 @@ function AdminDashboard() {
       </div>
 
       {/* Timetable Overview */}
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-card to-muted/30">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="font-display text-lg flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Calendar className="h-5 w-5 text-primary" />
-              </div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
               Timetable Overview
             </CardTitle>
             <Button asChild variant="outline" size="sm">
@@ -450,9 +477,9 @@ function AdminDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+            <div className="p-4 rounded-lg border">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
+                <div className="p-2 rounded-md bg-primary/10">
                   <Clock className="h-5 w-5 text-primary" />
                 </div>
                 <div>
@@ -461,10 +488,10 @@ function AdminDashboard() {
                 </div>
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-success/5 border border-success/10">
+            <div className="p-4 rounded-lg border">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-success/10">
-                  <Calendar className="h-5 w-5 text-success" />
+                <div className="p-2 rounded-md bg-green-500/10">
+                  <Calendar className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{totalScheduledClasses}</p>
@@ -472,10 +499,10 @@ function AdminDashboard() {
                 </div>
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-info/5 border border-info/10">
+            <div className="p-4 rounded-lg border">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-info/10">
-                  <Users className="h-5 w-5 text-info" />
+                <div className="p-2 rounded-md bg-blue-500/10">
+                  <Users className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{teacherCount}</p>
@@ -489,54 +516,48 @@ function AdminDashboard() {
 
       {/* System Status */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="shadow-lg border-0 bg-gradient-to-br from-primary/5 to-primary/10">
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">System Status</p>
-                <p className="text-2xl font-bold font-display mt-1">Healthy</p>
-                <p className="text-xs text-success mt-2 flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-success inline-block"></span>
+                <p className="text-2xl font-bold mt-1">Healthy</p>
+                <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-green-600 inline-block"></span>
                   All services operational
                 </p>
               </div>
-              <div className="p-4 rounded-xl bg-success/10">
-                <Activity className="h-8 w-8 text-success" />
-              </div>
+              <Activity className="h-8 w-8 text-green-600 opacity-80" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="shadow-lg border-0 bg-gradient-to-br from-info/5 to-info/10">
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">AI Chatbot</p>
-                <p className="text-2xl font-bold font-display mt-1">Active</p>
+                <p className="text-2xl font-bold mt-1">Active</p>
                 <p className="text-xs text-muted-foreground mt-2">
                   Ready to assist
                 </p>
               </div>
-              <div className="p-4 rounded-xl bg-info/10">
-                <MessageSquare className="h-8 w-8 text-info" />
-              </div>
+              <MessageSquare className="h-8 w-8 text-blue-600 opacity-80" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="shadow-lg border-0 bg-gradient-to-br from-warning/5 to-warning/10">
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Database</p>
-                <p className="text-2xl font-bold font-display mt-1">Connected</p>
+                <p className="text-2xl font-bold mt-1">Connected</p>
                 <p className="text-xs text-muted-foreground mt-2">
                   Last sync: Just now
                 </p>
               </div>
-              <div className="p-4 rounded-xl bg-warning/10">
-                <BookOpen className="h-8 w-8 text-warning" />
-              </div>
+              <BookOpen className="h-8 w-8 text-orange-500 opacity-80" />
             </div>
           </CardContent>
         </Card>
@@ -576,7 +597,7 @@ export default function Dashboard() {
           <div className="p-6 rounded-full bg-primary/10 mb-6">
             <GraduationCap className="h-16 w-16 text-primary" />
           </div>
-          <h2 className="text-2xl font-display font-bold mb-2">Welcome to Miracle LMS</h2>
+          <h2 className="text-2xl font-bold mb-2">Welcome to Miracle LMS</h2>
           <p className="text-muted-foreground mb-6 max-w-md">
             Your role has not been assigned yet. Please contact the administrator for access.
           </p>

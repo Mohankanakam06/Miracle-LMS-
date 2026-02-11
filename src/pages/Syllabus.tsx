@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useClasses, useCourses, useAssignments, useSubmissions } from '@/hooks/useLMS';
+import { useClasses, useCourses, useAssignments, useSubmissions, useTimetable } from '@/hooks/useLMS';
 import { useSeedDatabase } from '@/hooks/useDatabaseSeed';
 import { toast } from 'sonner';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -596,6 +596,88 @@ export default function Syllabus() {
     );
   }
 
+  /* ----------------------------------------------------------------------------------
+   *  LIVE CLASS LOGIC
+   * ---------------------------------------------------------------------------------- */
+  const { data: timetable } = useTimetable(user?.id); // Fetch student timetable
+  const [currentSlotMatches, setCurrentSlotMatches] = useState<string[]>([]);
+
+  // Update Live Status every minute
+  useState(() => {
+    const checkLiveStatus = () => {
+      if (!timetable) return;
+
+      const now = new Date();
+      const options = { weekday: 'long' } as const;
+      const currentDay = new Intl.DateTimeFormat('en-US', options).format(now);
+      const currentTime = now.getHours() * 60 + now.getMinutes();
+
+      const activeSubjects: string[] = [];
+
+      timetable.forEach((slot: any) => {
+        if (slot.day_of_week !== currentDay) return;
+
+        // Parse "10:30" to minutes
+        const parseTime = (t: string) => {
+          const [h, m] = t.split(':').map(Number);
+          return h * 60 + m;
+        };
+
+        const start = parseTime(slot.start_time);
+        const end = parseTime(slot.end_time);
+
+        if (currentTime >= start && currentTime < end) {
+          // Find the course ID linking to this slot
+          // We might need to match by course code or id
+          // Assuming slot has course_id or we match by code from our courses list
+          const matchedCourse = courses?.find(c => c.code === slot.subject_code || c.id === slot.class_id || c.name === slot.subject_name);
+          if (matchedCourse) {
+            activeSubjects.push(matchedCourse.id);
+          }
+          // Fallback for JNTU Data matching if DB match fails (using code)
+          const jntuMatch = JNTUGV_DATA.find(c => c.code === slot.subject_code);
+          if (jntuMatch) activeSubjects.push(jntuMatch.id);
+        }
+      });
+
+      setCurrentSlotMatches(activeSubjects);
+    };
+
+    const interval = setInterval(checkLiveStatus, 60000); // Check every minute
+    checkLiveStatus(); // Initial check
+
+    return () => clearInterval(interval);
+  }, [timetable, courses]);
+
+  // Set defaults from Profile
+  useState(() => {
+    if (user && (user as any).regulation) {
+      setSelectedRegulation((user as any).regulation);
+    }
+    if (user && (user as any).department) {
+      // Map department names if necessary, e.g. "Computer Science" -> "CSE"
+      // Promoting simple mapping for now
+      const deptMap: Record<string, string> = {
+        'Computer Science': 'CSE',
+        'Electronics': 'ECE',
+        'Electrical': 'EEE',
+        'Mechanical': 'MECH',
+        'Civil': 'CIVIL',
+        'CSE': 'CSE',
+        'ECE': 'ECE',
+        'EEE': 'EEE',
+        'MECH': 'MECH',
+        'CIVIL': 'CIVIL'
+      };
+      const mappedDept = deptMap[(user as any).department];
+      if (mappedDept) setSelectedBranch(mappedDept);
+    }
+    if (user && (user as any).year) {
+      // Assuming user.year is "III", "2", etc.
+      // Normalize if needed.
+    }
+  }, [user]);
+
   return (
     <DashboardLayout>
       <div className="space-y-6 stagger-fade-in">
@@ -667,9 +749,16 @@ export default function Syllabus() {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-3">
                         <BookOpen className="h-5 w-5 text-primary" />
-                        <Badge variant={progress.percentage >= 70 ? "default" : progress.percentage >= 40 ? "secondary" : "outline"} className="shadow-sm">
-                          {progress.percentage}%
-                        </Badge>
+                        <div className="flex gap-2">
+                          {currentSlotMatches.includes(course.id) && (
+                            <Badge variant="destructive" className="animate-pulse shadow-red-200 shadow-md">
+                              🔴 Live Now
+                            </Badge>
+                          )}
+                          <Badge variant={progress.percentage >= 70 ? "default" : progress.percentage >= 40 ? "secondary" : "outline"} className="shadow-sm">
+                            {progress.percentage}%
+                          </Badge>
+                        </div>
                       </div>
                       <h3 className="font-display font-bold text-lg mb-1 truncate group-hover:text-primary transition-colors">{course.name}</h3>
                       <p className="text-sm text-muted-foreground">{course.credits} Credits • Sem {course.semester}</p>

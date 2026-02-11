@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useAssignments, useSubmissions, useClasses, useSubmitAssignment } from '@/hooks/useLMS';
+import { useAssignments, useSubmissions, useClasses, useSubmitAssignment, useStudentAssignments } from '@/hooks/useLMS';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import CreateAssignmentDialog from '@/components/assignments/CreateAssignmentDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +21,12 @@ export default function Assignments() {
   const { user, userRole } = useAuth();
   const isTeacher = userRole === 'teacher' || userRole === 'admin';
 
-  const { data: assignments, isLoading: loadingAssignments } = useAssignments();
+  // Conditionally fetch assignments based on role
+  const { data: allAssignments, isLoading: loadingAll } = useAssignments();
+  const { data: studentAssignments, isLoading: loadingStudent } = useStudentAssignments(user?.id || '');
+
+  const assignments = isTeacher ? allAssignments : studentAssignments;
+  const loadingAssignments = isTeacher ? loadingAll : loadingStudent;
   const { data: submissions, isLoading: loadingSubmissions } = useSubmissions(user?.id);
   const { data: classes } = useClasses();
   const submitAssignment = useSubmitAssignment();

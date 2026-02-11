@@ -4,6 +4,7 @@ import { useProfiles, useCourses } from '@/hooks/useLMS';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,9 +14,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   User, Bell, Shield, Palette, Save, Loader2, BookOpen,
-  Mail, Phone, Building, Calendar, Camera, GraduationCap, Hash, UserCircle
+  Mail, Phone, Building, Calendar, Camera, GraduationCap, Hash, UserCircle, Users, Sun, Moon, Monitor
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ChangePasswordDialog from '@/components/settings/ChangePasswordDialog';
 
 const DEPARTMENTS = [
   { value: 'CSE', label: 'CSE' },
@@ -60,6 +62,7 @@ export default function Settings() {
   const [department, setDepartment] = useState('');
   const [subject, setSubject] = useState('');
   const [semester, setSemester] = useState('');
+  const [section, setSection] = useState('');
   const [regulation, setRegulation] = useState('');
   const [rollNumber, setRollNumber] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -74,9 +77,13 @@ export default function Settings() {
       setDepartment(currentProfile.department || '');
       setSubject(currentProfile.subject || '');
       setSemester(currentProfile.semester || '');
+      setSection(currentProfile.section || '');
       setRegulation(currentProfile.regulation || '');
       setRollNumber(currentProfile.roll_number || '');
       setAvatarUrl(currentProfile.avatar_url);
+      // Load notification preferences from DB
+      setEmailNotifications((currentProfile as any).email_notifications ?? true);
+      setPushNotifications((currentProfile as any).push_notifications ?? true);
     }
   }, [currentProfile]);
 
@@ -150,8 +157,11 @@ export default function Settings() {
           department: department || null,
           subject: subject || null,
           semester: semester || null,
+          section: section || null,
           regulation: regulation || null,
           roll_number: rollNumber || null,
+          email_notifications: emailNotifications,
+          push_notifications: pushNotifications,
         })
         .eq('id', user.id);
 
@@ -334,6 +344,26 @@ export default function Settings() {
               )}
               {userRole === 'student' && (
                 <div className="space-y-2">
+                  <Label htmlFor="section" className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Section
+                  </Label>
+                  <Select value={section} onValueChange={setSection}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select section" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border z-50">
+                      {['A', 'B', 'C'].map((sec) => (
+                        <SelectItem key={sec} value={sec}>
+                          Section {sec}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {userRole === 'student' && (
+                <div className="space-y-2">
                   <Label htmlFor="regulation" className="flex items-center gap-2">
                     <Hash className="h-4 w-4" />
                     Regulation
@@ -412,20 +442,20 @@ export default function Settings() {
             <CardDescription>Manage your password and security settings</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="current-password">Current Password</Label>
-                <Input id="current-password" type="password" placeholder="Enter current password" />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Password</Label>
+                <p className="text-sm text-muted-foreground">Update your account password</p>
               </div>
-              <div></div>
-              <div className="space-y-2">
-                <Label htmlFor="new-password">New Password</Label>
-                <Input id="new-password" type="password" placeholder="Enter new password" />
+              <ChangePasswordDialog />
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Email</Label>
+                <p className="text-sm text-muted-foreground">{user?.email || 'Not set'}</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm New Password</Label>
-                <Input id="confirm-password" type="password" placeholder="Confirm new password" />
-              </div>
+              <Badge variant="outline" className="text-success border-success/30">Verified</Badge>
             </div>
           </CardContent>
         </Card>
@@ -439,8 +469,45 @@ export default function Settings() {
             </div>
             <CardDescription>Customize the look and feel</CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Theme settings coming soon...</p>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Theme</Label>
+                <p className="text-sm text-muted-foreground">Select your preferred color scheme</p>
+              </div>
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-muted">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 h-8 px-3 data-[active=true]:bg-background data-[active=true]:shadow-sm"
+                  data-active={true}
+                >
+                  <Monitor className="h-4 w-4" />
+                  System
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 h-8 px-3 data-[active=true]:bg-background data-[active=true]:shadow-sm"
+                  data-active={false}
+                  disabled
+                >
+                  <Sun className="h-4 w-4" />
+                  Light
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 h-8 px-3 data-[active=true]:bg-background data-[active=true]:shadow-sm"
+                  data-active={false}
+                  disabled
+                >
+                  <Moon className="h-4 w-4" />
+                  Dark
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">Light and Dark themes coming in the next update.</p>
           </CardContent>
         </Card>
 

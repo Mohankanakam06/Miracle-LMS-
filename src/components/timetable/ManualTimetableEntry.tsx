@@ -56,7 +56,17 @@ interface EditingEntry {
     end_time: string;
 }
 
-export default function ManualTimetableEntry() {
+interface ManualTimetableEntryProps {
+    selectedDepartment?: string;
+    selectedSemester?: string;
+    selectedSection?: string;
+}
+
+export default function ManualTimetableEntry({
+    selectedDepartment,
+    selectedSemester,
+    selectedSection
+}: ManualTimetableEntryProps) {
     const { user } = useAuth();
     const { data: classes, isLoading: classesLoading } = useClasses();
     const { data: existingTimetable, isLoading: timetableLoading } = useTimetable();
@@ -72,7 +82,29 @@ export default function ManualTimetableEntry() {
     const [useCustomSubject, setUseCustomSubject] = useState(false);
     const [customSubjectName, setCustomSubjectName] = useState('');
     const [customSubjectCode, setCustomSubjectCode] = useState('');
-    const [customSection, setCustomSection] = useState('A');
+    const [customSection, setCustomSection] = useState(selectedSection || 'A');
+
+    // Filter classes based on context
+    const filteredClasses = classes?.filter(c => {
+        if (!selectedDepartment && !selectedSemester && !selectedSection) return true;
+
+        // Filter by Department
+        if (selectedDepartment && c.courses?.department !== selectedDepartment) return false;
+
+        // Filter by Section
+        if (selectedSection && c.section !== selectedSection) return false;
+
+        // Filter by Semester
+        if (selectedSemester && c.courses?.semester) {
+            const [yearStr, semStr] = selectedSemester.split('-');
+            const year = parseInt(yearStr);
+            const sem = parseInt(semStr);
+            const targetSem = (year - 1) * 2 + sem;
+            if (c.courses.semester !== targetSem) return false;
+        }
+
+        return true;
+    });
 
     const resetForm = () => {
         setClassId('');
@@ -82,7 +114,7 @@ export default function ManualTimetableEntry() {
         setUseCustomSubject(false);
         setCustomSubjectName('');
         setCustomSubjectCode('');
-        setCustomSection('A');
+        setCustomSection(selectedSection || 'A');
     };
 
     // Get time from selected period
@@ -128,13 +160,22 @@ export default function ManualTimetableEntry() {
 
             // If using custom subject, create the course and class first
             if (useCustomSubject) {
+                let semesterInt = 1;
+                if (selectedSemester) {
+                    const [yearStr, semStr] = selectedSemester.split('-');
+                    const year = parseInt(yearStr);
+                    const sem = parseInt(semStr);
+                    semesterInt = (year - 1) * 2 + sem;
+                }
+
                 // Step 1: Create the course
                 const { data: newCourse, error: courseError } = await supabase
                     .from('courses')
                     .insert({
                         name: customSubjectName.trim(),
                         code: customSubjectCode.trim().toUpperCase(),
-                        semester: 1,
+                        semester: semesterInt,
+                        department: selectedDepartment || 'Common',
                         credits: 3,
                     })
                     .select()
@@ -149,7 +190,7 @@ export default function ManualTimetableEntry() {
                         course_id: newCourse.id,
                         teacher_id: user?.id,
                         section: customSection,
-                        academic_year: '2025-26',
+                        academic_year: '2025-2026',
                     })
                     .select()
                     .single();
@@ -277,7 +318,7 @@ export default function ManualTimetableEntry() {
                         Add Timetable Entry
                     </CardTitle>
                     <CardDescription>
-                        Manually add individual class slots to the timetable
+                        Manually add class slots to the timetable for <strong>{selectedDepartment} {selectedSemester} Section {selectedSection}</strong>
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -332,23 +373,29 @@ export default function ManualTimetableEntry() {
                                             <SelectItem value="A">Section A</SelectItem>
                                             <SelectItem value="B">Section B</SelectItem>
                                             <SelectItem value="C">Section C</SelectItem>
+                                            <SelectItem value="D">Section D</SelectItem>
+                                            <SelectItem value="E">Section E</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                             </>
                         ) : (
                             <div className="space-y-2">
-                                <Label>Class/Course *</Label>
+                                <Label>Select Class *</Label>
                                 <Select value={classId} onValueChange={setClassId}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select class" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {classes?.map(c => (
-                                            <SelectItem key={c.id} value={c.id}>
-                                                {c.courses?.code} - {c.courses?.name} ({c.section})
-                                            </SelectItem>
-                                        ))}
+                                        {filteredClasses?.length === 0 ? (
+                                            <SelectItem value="none" disabled>No classes found for this filter</SelectItem>
+                                        ) : (
+                                            filteredClasses?.map(c => (
+                                                <SelectItem key={c.id} value={c.id}>
+                                                    {c.courses?.code} - {c.courses?.name}
+                                                </SelectItem>
+                                            ))
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>

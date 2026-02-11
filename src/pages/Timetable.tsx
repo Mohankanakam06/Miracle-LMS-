@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useTimetable } from '@/hooks/useLMS';
+import { useTimetable, useStudentTimetable } from '@/hooks/useLMS';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import TimetableGenerator from '@/components/timetable/TimetableGenerator';
 import ManualTimetableEntry from '@/components/timetable/ManualTimetableEntry';
@@ -59,6 +61,8 @@ const SECTIONS = [
   { value: 'A', label: 'Section A' },
   { value: 'B', label: 'Section B' },
   { value: 'C', label: 'Section C' },
+  { value: 'D', label: 'Section D' },
+  { value: 'E', label: 'Section E' },
 ];
 
 const subjectColors: Record<string, string> = {
@@ -105,7 +109,57 @@ export default function Timetable() {
   const [selectedSemester, setSelectedSemester] = useState('3-2');
   const [selectedSection, setSelectedSection] = useState('A');
 
-  const { data: timetableData, isLoading } = useTimetable(user?.id);
+
+  const { data: profile } = useQuery({
+    queryKey: ['profile-context', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('department, semester, section')
+        .eq('id', user?.id)
+        .single();
+      if (error) return null;
+      return data as any;
+    },
+    enabled: !!user?.id && !isTeacherOrAdmin
+  });
+
+  const filters = isTeacherOrAdmin ? {
+    department: selectedDepartment,
+    semester: selectedSemester,
+    section: selectedSection
+  } : {
+    department: (profile as any)?.department || undefined,
+    semester: (profile as any)?.semester || undefined,
+    section: (profile as any)?.section || undefined
+  };
+
+  // Sync state with profile for students
+  useEffect(() => {
+    if (!isTeacherOrAdmin && profile) {
+      if (profile.department) setSelectedDepartment(profile.department);
+      if (profile.semester) {
+        const semVal = typeof profile.semester === 'string' ? profile.semester : profile.semester.toString();
+        setSelectedSemester(semVal);
+
+        if (semVal.startsWith('1')) setSelectedYear('I');
+        else if (semVal.startsWith('2')) setSelectedYear('II');
+        else if (semVal.startsWith('3')) setSelectedYear('III');
+        else if (semVal.startsWith('4')) setSelectedYear('IV');
+      }
+      if (profile.section) setSelectedSection(profile.section);
+    }
+  }, [profile, isTeacherOrAdmin]);
+
+
+  // Use the correct hook based on role
+  // If teacher/admin, use generic hook (which respects filters)
+  // If student, use student-specific hook
+  const { data: genericTimetable, isLoading: loadingGeneric } = useTimetable(user?.id, filters);
+  const { data: studentTimetable, isLoading: loadingStudent } = useStudentTimetable(user?.id || '');
+
+  const timetableData = isTeacherOrAdmin ? genericTimetable : studentTimetable;
+  const isLoading = isTeacherOrAdmin ? loadingGeneric : loadingStudent;
 
   const getScheduleForSlot = (day: string, slot: typeof TIME_SLOTS[0]) => {
     return timetableData?.find(entry => {
@@ -195,11 +249,19 @@ export default function Timetable() {
             </TabsContent>
 
             <TabsContent value="manual">
-              <ManualTimetableEntry />
+              <ManualTimetableEntry
+                selectedDepartment={selectedDepartment}
+                selectedSemester={selectedSemester}
+                selectedSection={selectedSection}
+              />
             </TabsContent>
 
             <TabsContent value="generate">
-              <TimetableGenerator />
+              <TimetableGenerator
+                selectedDepartment={selectedDepartment}
+                selectedSemester={selectedSemester}
+                selectedSection={selectedSection}
+              />
             </TabsContent>
           </Tabs>
         ) : (
@@ -255,6 +317,20 @@ function TimetableView({
   setSelectedSection,
   isAdmin,
 }: TimetableViewProps) {
+  const [currentDayName, setCurrentDayName] = useState('');
+  const [currentTimeMinutes, setCurrentTimeMinutes] = useState(0);
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setCurrentDayName(new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now));
+      setCurrentTimeMinutes(now.getHours() * 60 + now.getMinutes());
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleExportPdf = () => {
     if (!timetableData) return;
     generateTimetablePdf({
@@ -379,7 +455,7 @@ function TimetableView({
       <Card className="shadow-card overflow-hidden">
         <CardContent className="p-0">
           {timetableData && timetableData.length > 0 ? (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full pb-2">
               <table className="w-full min-w-[900px] border-collapse">
                 <thead>
                   <tr className="bg-primary text-primary-foreground">
@@ -432,14 +508,25 @@ function TimetableView({
                         const courseCode = schedule?.classes?.courses?.code;
                         const abbrev = courseCode || getAbbreviation(courseName);
 
+                        // Check if this slot is NOW
+                        const parseTime = (t: string) => {
+                          const [h, m] = t.split(':').map(Number);
+                          return h * 60 + m;
+                        };
+                        const start = parseTime(slot.start);
+                        const end = parseTime(slot.end);
+                        const isNow = day === currentDayName && currentTimeMinutes >= start && currentTimeMinutes < end;
+
                         return (
                           <td
                             key={slotIndex}
                             className={cn(
                               "p-2 text-center border min-w-[80px]",
-                              schedule && getSubjectColor(courseName)
+                              schedule && getSubjectColor(courseName),
+                              isNow && "ring-2 ring-destructive ring-inset animate-pulse bg-red-50 dark:bg-red-900/20"
                             )}
                           >
+                            {isNow && <Badge variant="destructive" className="mb-1 text-[10px] h-4 py-0 px-1">LIVE</Badge>}
                             {schedule && (
                               <div className="flex flex-col items-center gap-0.5">
                                 <span className="font-bold text-sm">{abbrev}</span>
