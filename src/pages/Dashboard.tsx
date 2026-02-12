@@ -148,7 +148,7 @@ function StudentDashboard() {
       />
 
       {/* Mobile-First Stats Grid */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 relative z-10">
         <StatsGrid stats={[
           {
             title: 'Attendance',
@@ -267,32 +267,34 @@ function TeacherDashboard() {
       />
 
       {/* Stats Grid */}
-      <StatsGrid stats={[
-        {
-          title: 'Active Assignments',
-          value: assignments?.length || 0,
-          icon: <ClipboardList className="h-6 w-6" />,
-          variant: 'primary',
-        },
-        {
-          title: 'Materials Uploaded',
-          value: materials?.length || 0,
-          icon: <FileText className="h-6 w-6" />,
-          variant: 'info',
-        },
-        {
-          title: 'Classes Today',
-          value: todayClasses,
-          icon: <Calendar className="h-6 w-6" />,
-          variant: 'success',
-        },
-        {
-          title: 'Pending Grading',
-          value: 0,
-          icon: <BarChart3 className="h-6 w-6" />,
-          variant: 'warning',
-        },
-      ]} />
+      <div className="mt-6 relative z-10">
+        <StatsGrid stats={[
+          {
+            title: 'Active Assignments',
+            value: assignments?.length || 0,
+            icon: <ClipboardList className="h-6 w-6" />,
+            variant: 'primary',
+          },
+          {
+            title: 'Materials Uploaded',
+            value: materials?.length || 0,
+            icon: <FileText className="h-6 w-6" />,
+            variant: 'info',
+          },
+          {
+            title: 'Classes Today',
+            value: todayClasses,
+            icon: <Calendar className="h-6 w-6" />,
+            variant: 'success',
+          },
+          {
+            title: 'Pending Grading',
+            value: 0,
+            icon: <BarChart3 className="h-6 w-6" />,
+            variant: 'warning',
+          },
+        ]} />
+      </div>
 
       {/* Quick Actions and Recent Assignments */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -375,32 +377,34 @@ function AdminDashboard() {
       />
 
       {/* Stats Grid */}
-      <StatsGrid stats={[
-        {
-          title: 'Total Users',
-          value: totalUsers,
-          icon: <Users className="h-6 w-6" />,
-          variant: 'primary',
-        },
-        {
-          title: 'Active Courses',
-          value: courses?.length || 0,
-          icon: <BookOpen className="h-6 w-6" />,
-          variant: 'success',
-        },
-        {
-          title: 'Notifications Sent',
-          value: notifications?.length || 0,
-          icon: <Bell className="h-6 w-6" />,
-          variant: 'info',
-        },
-        {
-          title: 'Fee Collection',
-          value: totalCollected > 0 ? `₹${(totalCollected / 100000).toFixed(1)}L` : '₹0',
-          icon: <TrendingUp className="h-6 w-6" />,
-          variant: 'warning',
-        },
-      ]} />
+      <div className="mt-6 relative z-10">
+        <StatsGrid stats={[
+          {
+            title: 'Total Users',
+            value: totalUsers,
+            icon: <Users className="h-6 w-6" />,
+            variant: 'primary',
+          },
+          {
+            title: 'Active Courses',
+            value: courses?.length || 0,
+            icon: <BookOpen className="h-6 w-6" />,
+            variant: 'success',
+          },
+          {
+            title: 'Notifications Sent',
+            value: notifications?.length || 0,
+            icon: <Bell className="h-6 w-6" />,
+            variant: 'info',
+          },
+          {
+            title: 'Fee Collection',
+            value: totalCollected > 0 ? `₹${(totalCollected / 100000).toFixed(1)}L` : '₹0',
+            icon: <TrendingUp className="h-6 w-6" />,
+            variant: 'warning',
+          },
+        ]} />
+      </div>
 
       {/* Quick Actions and Activity */}
       <div className="grid gap-6 lg:grid-cols-3">

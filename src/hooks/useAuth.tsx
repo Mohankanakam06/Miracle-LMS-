@@ -45,9 +45,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         // Profile verification/creation (Self-healing)
         console.log('Profile missing, attempting to create default profile...');
+        console.log('Fallback role provided:', fallbackRole);
 
         const userEmail = currentSession?.user?.email;
         const userMeta = currentSession?.user?.user_metadata;
+
+        // Determine effective role - prioritize fallback/metadata
+        const effectiveRole = (fallbackRole || userMeta?.role || 'student') as UserRole;
+        const isStaff = effectiveRole === 'admin' || effectiveRole === 'teacher';
 
         // @ts-ignore - new fields not in generated types yet
         const { error: insertError } = await supabase
@@ -55,24 +60,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .insert({
             id: userId,
             email: userEmail,
-            role: fallbackRole || 'student',
+            role: effectiveRole,
             full_name: userMeta?.full_name || userEmail?.split('@')[0],
-            onboarding_complete: fallbackRole !== 'student', // Non-students skip onboarding
-            verification_status: fallbackRole !== 'student' ? 'verified' : 'pending',
+            onboarding_complete: isStaff, // Staff skip onboarding
+            verification_status: isStaff ? 'verified' : 'pending', // Staff auto-verified
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
 
         if (insertError) {
           console.error('Failed to auto-create profile:', JSON.stringify(insertError, null, 2));
-          setUserRole((fallbackRole as UserRole) || 'student');
+          // If we can't create a profile, we should still set the role in state 
+          // so the user can potentially access the app (though they might hit other DB errors)
+          setUserRole(effectiveRole);
         } else {
-          console.log('Profile auto-created successfully');
-          setUserRole((fallbackRole as UserRole) || 'student');
+          console.log('Profile auto-created successfully with role:', effectiveRole);
+          setUserRole(effectiveRole);
         }
       }
     } catch (error) {
       console.error('Exception fetching user role:', error);
+      // Fallback to what we know
       setUserRole((fallbackRole as UserRole) || 'student');
     }
   };
@@ -190,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!error && data.user) {
       // Create profile directly for non-students (they skip onboarding)
       // @ts-ignore - new fields not in generated types yet
-      await supabase.from('profiles').upsert({
+      const { error: profileError } = await supabase.from('profiles').upsert({
         id: data.user.id,
         email: email,
         role: role,
@@ -200,6 +208,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
+
+      if (profileError) {
+        console.error('Admin create user: Profile creation failed', profileError);
+        return { error: profileError };
+      }
     }
 
     return { error };
